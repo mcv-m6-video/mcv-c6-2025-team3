@@ -217,7 +217,6 @@ def variable_background_modeling(gray_frames_25):
 
     return mean, variance, std
 
-
 # TASK 2.1: Adaptative modeling
 def adaptative_modelling(video_path, annotations_path, alpha, p):
     # Read video to get frames from it
@@ -240,15 +239,17 @@ def adaptative_modelling(video_path, annotations_path, alpha, p):
         frame = gray_frames_75[i]
         
         # Segmented frame
-        segmented_frame = segment_foreground(frame, mean, std, alpha) #foreground pixels are 0 or 1?
+        mask = np.abs(frame - mean) >= alpha * (std + 2)
+        fg_mask = mask.astype(np.uint8) * 255 #0 for bg, 255 for fg
         
-        # TODO: Implement adaptative segmentation
-        """if pixel is background then
-        mean = p * frame + (1 - p) * mean
-        variance = p * (frame - mean) ** 2 + (1 - p) * variance"""
-        
+        # Update background model for background pixels only
+        bg_pixels = ~mask
+        mean[bg_pixels] = p * frame[bg_pixels] + (1 - p) * mean[bg_pixels]
+        variance[bg_pixels] = p * (frame[bg_pixels] - mean[bg_pixels]) ** 2 + (1 - p) * variance[bg_pixels]
+        std = np.sqrt(variance)
         
         # Add the segmented frame to the list
+        segmented_frames.append(fg_mask)
     
     # Evaluation and computation of metrics
 
