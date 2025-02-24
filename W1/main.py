@@ -88,35 +88,6 @@ def read_annonations(annotations_path):
 
     return car_boxes
 
-def compute_mean_and_variance(frames):
-    """Compute mean and variance of pixels in the first 25% of the 
-    test sequence to model background
-
-    Parameters
-        frames_25 : np.ndarray([n_frames, 1080, 1920, 1])
-
-    Returns
-        mean : np.ndarray([1080, 1920])
-        std : np.ndarray([1080, 1920])"""
-
-    # Stack frames into a 3D array: (num_frames, height, width)
-    frames_stack = np.stack(frames, axis=0)
-
-    mean_frame = np.mean(frames_stack, axis=0)
-    variance_frame = np.var(frames_stack, axis=0)
-
-    return mean_frame, variance_frame
-
-def segment_foreground(frames, mean, variance, alpha):
-    """Return the estimation of the foreground using the reting 75% of the frames
-
-     Returns
-        foreground_background : np.ndarray([n_frames, 1080, 1920, 3], dtype=bool)
-    """
-    #implementar pseudocodigo slide 22: week1 instructions
-    foreground = np.abs((frames-mean) >= alpha * (variance + 2))
-    return foreground.astype(bool)
-
 def get_predicted_bounding_boxes(frame):
     """
     Extract bounding boxes from a single frame using Connected Components.
@@ -139,32 +110,34 @@ def get_predicted_bounding_boxes(frame):
         boxes.append({'xtl': x, 'ytl': y, 'xbr': x + w, 'ybr': y + h})
     return boxes
 
-def gaussian_modeling(video_path, annotations_path, alpha):
+def compute_mean_and_variance(frames):
+    """Compute mean and variance of pixels in the first 25% of the 
+    test sequence to model background
 
-    # Read video to get frames from it
-    color_frames, gray_frames = read_video(video_path)
+    Parameters
+        frames_25 : np.ndarray([n_frames, 1080, 1920, 1])
 
-    # Get ground truth annotations
-    car_bbxes = read_annonations(annotations_path)
+    Returns
+        mean : np.ndarray([1080, 1920])
+        std : np.ndarray([1080, 1920])"""
 
-    # Separate video in first 25% and second 75%
-    color_frames_25, color_frames_75 = split_video_25_75(color_frames)
-    gray_frames_25, gray_frames_75 = split_video_25_75(gray_frames)
+    # Stack frames into a 3D array: (num_frames, height, width)
+    frames_stack = np.stack(frames, axis=0)
 
-    # Compute mean and variance of pixels in the first 25% frames
-    mean, variance = compute_mean_and_variance(gray_frames_25)
+    mean = np.mean(frames_stack, axis=0)
+    std = np.std(frames_stack, axis=0)
 
-    # Segment foreground
-    foreground_segmented = segment_foreground(gray_frames_75, mean, variance, alpha)
+    return mean, std
 
-    # Evaluation and computation of metrics
-    #TODO: Implement metrics to evaluate model
-    """for frame in range(foreground_segmented.shape[0]):
-        predicted_bbxes = get_predicted_bounding_boxes(frame)
-        """
+def segment_foreground(frames, mean, std, alpha):
+    """Return the estimation of the foreground using the reting 75% of the frames
 
-
-    return foreground_segmented, color_frames_75
+     Returns
+        foreground_background : np.ndarray([n_frames, 1080, 1920, 3], dtype=bool)
+    """
+    #implementar pseudocodigo slide 22: week1 instructions
+    foreground = np.abs((frames-mean) >= alpha * (std + 2))
+    return foreground.astype(bool)
 
 def visualize_foreground(foreground_segmented, color_frames_75, wait_time=30):
     """
@@ -194,6 +167,102 @@ def visualize_foreground(foreground_segmented, color_frames_75, wait_time=30):
 
     # Close the window after visualization
     cv2.destroyAllWindows()
+
+# TASK 1.1: Gaussian modeling
+def gaussian_modeling(video_path, annotations_path, alpha):
+
+    # Read video to get frames from it
+    color_frames, gray_frames = read_video(video_path)
+
+    # Get ground truth annotations
+    car_bbxes = read_annonations(annotations_path)
+
+    # Separate video in first 25% and second 75%
+    color_frames_25, color_frames_75 = split_video_25_75(color_frames)
+    gray_frames_25, gray_frames_75 = split_video_25_75(gray_frames)
+
+    # Compute mean and variance of pixels in the first 25% frames
+    mean, std = compute_mean_and_variance(gray_frames_25)
+
+    # Segment foreground
+    foreground_segmented = segment_foreground(gray_frames_75, mean, std, alpha)
+
+    # Evaluation and computation of metrics
+    #TODO: Implement metrics to evaluate model
+
+
+    return foreground_segmented, color_frames_75
+
+# TASK 2.1: Adaptative modeling
+def variable_background_modeling(gray_frames_25):
+    number_frames = gray_frames_25.shape[0]
+    height, width = gray_frames_25.shape[1], gray_frames_25.shape[2]
+
+    # Initialize the mean and variance with the first frame
+    mean = np.zeros((height, width))
+    variance = np.zeros((height, width))
+
+    for i in range(number_frames):
+        # Get the frame
+        frame = gray_frames_25[i]
+        
+        # Update the mean
+        mean +=  (frame - mean) / (i + 1)
+        
+        # Update the variance 
+        variance += (frame - mean) ** 2 
+        
+    # Compute the standard deviation from the variance
+    std = np.sqrt(variance / (i + 1))
+
+    return mean, variance, std
+
+
+# TASK 2.1: Adaptative modeling
+def adaptative_modelling(video_path, annotations_path, alpha, p):
+    # Read video to get frames from it
+    color_frames, gray_frames = read_video(video_path)
+
+    # Get ground truth annotations
+    car_bbxes = read_annonations(annotations_path)
+
+    # Separate video in first 25% and second 75%
+    color_frames_25, color_frames_75 = split_video_25_75(color_frames)
+    gray_frames_25, gray_frames_75 = split_video_25_75(gray_frames)
+
+    # Background modeling
+    mean, variance, std = variable_background_modeling(gray_frames_25)
+
+    # Segment the frames in the second 75% using the updated background model
+    segmented_frames = []
+    
+    for i in range(gray_frames_75.shape[0]):
+        frame = gray_frames_75[i]
+        
+        # Segmented frame
+        segmented_frame = segment_foreground(frame, mean, std, alpha) #foreground pixels are 0 or 1?
+        
+        # TODO: Implement adaptative segmentation
+    """if pixel is background then
+        mean = p * frame + (1 - p) * mean
+        variance = p * (frame - mean) ** 2 + (1 - p) * variance"""
+        
+        
+        # Add the segmented frame to the list
+    
+    return segmented_frames, mean, variance, std
+
+
+
+
+
+
+
+    
+
+    # Evaluation and computation of metrics
+
+
 
 if __name__=="__main__":
     foreground_segmented, color_frames_75 = gaussian_modeling(video_path, annotations_path, alpha=11)
