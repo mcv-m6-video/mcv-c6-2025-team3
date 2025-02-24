@@ -243,25 +243,17 @@ def adaptative_modelling(video_path, annotations_path, alpha, p):
         segmented_frame = segment_foreground(frame, mean, std, alpha) #foreground pixels are 0 or 1?
         
         # TODO: Implement adaptative segmentation
-    """if pixel is background then
+        """if pixel is background then
         mean = p * frame + (1 - p) * mean
         variance = p * (frame - mean) ** 2 + (1 - p) * variance"""
         
         
         # Add the segmented frame to the list
     
-    return segmented_frames, mean, variance, std
-
-
-
-
-
-
-
-    
-
     # Evaluation and computation of metrics
 
+    
+    return segmented_frames, mean, variance, std
 
 
 if __name__=="__main__":
