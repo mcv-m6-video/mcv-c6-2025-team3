@@ -1,262 +1,13 @@
 import argparse
-import cv2
-import xml.etree.ElementTree as ET
-import numpy as np
+
+from utils import visualize_foreground
+from task_1 import gaussian_modeling
+from task_2 import adaptative_modelling
+from task_3 import state_of_the_art_background_estimation
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
-video_path = r'C:\Users\usuario\Downloads\AICity_data\train\S03\c010\vdo.avi'
-annotations_path =  r'C:\Users\usuario\Downloads\ai_challenge_s03_c010-full_annotation.xml'
-
-def read_video(video_path):
-    """
-    Reads a video and returns frames in both color and grayscale.
-
-    Args:
-        video_path (str): Path to the video file.
-
-    Returns:
-        color_frames: np.ndarray of shape [n_frames, height, width, 3]
-        gray_frames: np.ndarray of shape [n_frames, height, width]
-    """
-    # Open the video
-    video = cv2.VideoCapture(video_path)
-
-    # Check if video opened successfully
-    if not video.isOpened():
-        print("Error: Cannot open video file.")
-        exit()
-
-    color_frames = []
-    gray_frames = []
-    
-    # Read frames until the end
-    while True:
-        ret, frame = video.read()
-        if not ret:
-            print("End of video or cannot read frame.")
-            break
-
-        color_frames.append(frame)
-        gray_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-
-    # Release video capture
-    video.release()
-
-    # Return frames as NumPy arrays
-    return np.array(color_frames), np.array(gray_frames)
-
-def split_video_25_75(video_frames):
-    """
-    We want to return video frames separated in 25% and 75%
-
-    Returns:
-        frames_25: np.ndarray([n_frames_25, 1080, 1920, 3])
-        frames_75: np.ndarray([n_frames_75, 1080, 1920, 3])
-    """
-    split = int(video_frames.shape[0] * 0.25)
-    return video_frames[:split], video_frames[split:]
-
-def read_annonations(annotations_path):
-    "For each frame we will return a list of objects containing"
-    "the bounding boxes present in that frame"
-    "car_boxes[1417] to obtain all bounding boxes in frame 1417"
-    # Parse the XML file
-    tree = ET.parse(annotations_path)
-    root = tree.getroot()
-
-    car_boxes = {}  # Store extracted boxes here
-
-    # Iterate over all <track> elements
-    for track in root.findall('.//track[@label="car"]'):
-        # Iterate over all <box> elements within each track
-        for box in track.findall('box'):
-            # Check if the <attribute> name is not 'parked'
-            parked_attribute = box.find('attribute[@name="parked"]')
-            if parked_attribute is not None and parked_attribute.text == 'false':
-                # Extract frame and bounding box coordinates
-                frame = int(box.get('frame'))
-                box_attributes = {
-                    'xtl': float(box.get('xtl')),
-                    'ytl': float(box.get('ytl')),
-                    'xbr': float(box.get('xbr')),
-                    'ybr': float(box.get('ybr')),
-                }                 
-                
-                if frame in car_boxes:
-                    car_boxes[frame].append(box_attributes)
-                else:
-                    car_boxes[frame] = [box_attributes]
-
-    return car_boxes
-
-def get_predicted_bounding_boxes(frame):
-    """
-    Extract bounding boxes from a single frame using Connected Components.
-    
-    Args:
-        frame (np.ndarray): Binary frame (bool or uint8) [H, W].
-        
-    Returns:
-        List[dict]: List of bounding boxes with keys: xtl, ytl, xbr, ybr.
-    """
-    # Ensure frame is uint8 (0 or 255)
-    frame_uint8 = frame.astype(np.uint8) * 255
-
-    # Connected components
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(frame_uint8, connectivity=8)
-
-    boxes = []
-    for i in range(1, num_labels):  # Skip the background (label 0)
-        x, y, w, h, area = stats[i]
-        boxes.append({'xtl': x, 'ytl': y, 'xbr': x + w, 'ybr': y + h})
-    return boxes
-
-def compute_mean_and_variance(frames):
-    """Compute mean and variance of pixels in the first 25% of the 
-    test sequence to model background
-
-    Parameters
-        frames_25 : np.ndarray([n_frames, 1080, 1920, 1])
-
-    Returns
-        mean : np.ndarray([1080, 1920])
-        std : np.ndarray([1080, 1920])"""
-
-    # Stack frames into a 3D array: (num_frames, height, width)
-    frames_stack = np.stack(frames, axis=0)
-
-    mean = np.mean(frames_stack, axis=0)
-    std = np.std(frames_stack, axis=0)
-
-    return mean, std
-
-def segment_foreground(frames, mean, std, alpha):
-    """Return the estimation of the foreground using the reting 75% of the frames
-
-     Returns
-        foreground_background : np.ndarray([n_frames, 1080, 1920, 3], dtype=bool)
-    """
-    #implementar pseudocodigo slide 22: week1 instructions
-    foreground = np.abs((frames-mean) >= alpha * (std + 2))
-    return foreground.astype(bool)
-
-def visualize_foreground(foreground_segmented, color_frames_75, wait_time=30):
-    """
-    Visualize the segmented foreground using OpenCV.
-
-    Args:
-        foreground_segmented (np.ndarray): Boolean array of foreground pixels [n_frames, height, width].
-        color_frames_75 (np.ndarray): Color frames corresponding to foreground segmentation.
-        wait_time (int): Delay between frames in milliseconds (default: 30).
-
-    Returns:
-        None
-    """
-    for i in range(foreground_segmented.shape[0]):
-        # Get current frame
-        frame = color_frames_75[i].copy()
-
-        # Highlight foreground in red (for visualization)
-        frame[foreground_segmented[i]] = [0, 0, 255]  # Red color in BGR
-
-        # Display the frame
-        cv2.imshow("Foreground Segmentation", frame)
-
-        # Wait for the specified time or until 'q' is pressed
-        if cv2.waitKey(wait_time) & 0xFF == ord('q'):
-            break
-
-    # Close the window after visualization
-    cv2.destroyAllWindows()
-
-# TASK 1.1: Gaussian modeling
-def gaussian_modeling(video_path, annotations_path, alpha):
-
-    # Read video to get frames from it
-    color_frames, gray_frames = read_video(video_path)
-
-    # Get ground truth annotations
-    car_bbxes = read_annonations(annotations_path)
-
-    # Separate video in first 25% and second 75%
-    color_frames_25, color_frames_75 = split_video_25_75(color_frames)
-    gray_frames_25, gray_frames_75 = split_video_25_75(gray_frames)
-
-    # Compute mean and variance of pixels in the first 25% frames
-    mean, std = compute_mean_and_variance(gray_frames_25)
-
-    # Segment foreground
-    foreground_segmented = segment_foreground(gray_frames_75, mean, std, alpha)
-
-    # Evaluation and computation of metrics
-    #TODO: Implement metrics to evaluate model
-
-
-    return foreground_segmented, color_frames_75
-
-# TASK 2.1: Adaptative modeling
-def variable_background_modeling(gray_frames_25):
-    number_frames = gray_frames_25.shape[0]
-    height, width = gray_frames_25.shape[1], gray_frames_25.shape[2]
-
-    # Initialize the mean and variance with the first frame
-    mean = np.zeros((height, width))
-    variance = np.zeros((height, width))
-
-    for i in range(number_frames):
-        # Get the frame
-        frame = gray_frames_25[i]
-        
-        # Update the mean
-        mean +=  (frame - mean) / (i + 1)
-        
-        # Update the variance 
-        variance += (frame - mean) ** 2 
-        
-    # Compute the standard deviation from the variance
-    std = np.sqrt(variance / (i + 1))
-
-    return mean, variance, std
-
-# TASK 2.1: Adaptative modeling
-def adaptative_modelling(video_path, annotations_path, alpha, p):
-    # Read video to get frames from it
-    color_frames, gray_frames = read_video(video_path)
-
-    # Get ground truth annotations
-    car_bbxes = read_annonations(annotations_path)
-
-    # Separate video in first 25% and second 75%
-    color_frames_25, color_frames_75 = split_video_25_75(color_frames)
-    gray_frames_25, gray_frames_75 = split_video_25_75(gray_frames)
-
-    # Background modeling
-    mean, variance, std = variable_background_modeling(gray_frames_25)
-
-    # Segment the frames in the second 75% using the updated background model
-    segmented_frames = []
-    
-    for i in range(gray_frames_75.shape[0]):
-        frame = gray_frames_75[i]
-        
-        # Segmented frame
-        mask = np.abs(frame - mean) >= alpha * (std + 2)
-        fg_mask = mask.astype(np.uint8) * 255 #0 for bg, 255 for fg
-        
-        # Update background model for background pixels only
-        bg_pixels = ~mask
-        mean[bg_pixels] = p * frame[bg_pixels] + (1 - p) * mean[bg_pixels]
-        variance[bg_pixels] = p * (frame[bg_pixels] - mean[bg_pixels]) ** 2 + (1 - p) * variance[bg_pixels]
-        std = np.sqrt(variance)
-        
-        # Add the segmented frame to the list
-        segmented_frames.append(fg_mask)
-    
-    # Evaluation and computation of metrics
-
-    
-    return segmented_frames
-
+video_path = r'/Users/andrea.sanchez/Desktop/AICity_data/train/S03/c010/vdo.avi'
+annotations_path =  r'/Users/andrea.sanchez/Desktop/ai_challenge_s03_c010-full_annotation.xml'
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Week 1')
@@ -264,13 +15,16 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
+    # python main.py --task 1
     if args.task == 1:
         print("Task 1.1: Gaussian modeling")
-        # foreground_segmented, color_frames_75 = gaussian_modeling(video_path, annotations_path, alpha=11)
+        foreground_segmented, color_frames_75 = gaussian_modeling(video_path, annotations_path, alpha=11)
+        visualize_foreground(foreground_segmented, color_frames_75)
 
     elif args.task == 2:
         print("Task 2.1: Adaptative modeling")
-        # segmented_frames = adaptative_modelling(video_path, annotations_path, alpha=11, p=0.01)
-
+        segmented_frames, color_frames_75 = adaptative_modelling(video_path, annotations_path, alpha=11, p=0.01)
+        
     elif args.task == 3:
         print("Task 3.1: SOTA evaluation")
+        state_of_the_art_background_estimation(video_path, annotations_path, technique='MOG2')
