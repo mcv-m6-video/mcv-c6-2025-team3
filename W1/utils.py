@@ -71,20 +71,21 @@ def read_annonations(annotations_path):
         for box in track.findall('box'):
             # Check if the <attribute> name is not 'parked'
             parked_attribute = box.find('attribute[@name="parked"]')
-            if parked_attribute is not None and parked_attribute.text == 'false':
-                # Extract frame and bounding box coordinates
-                frame = int(box.get('frame'))
-                box_attributes = {
-                    'xtl': float(box.get('xtl')),
-                    'ytl': float(box.get('ytl')),
-                    'xbr': float(box.get('xbr')),
-                    'ybr': float(box.get('ybr')),
-                }                 
-                
-                if frame in car_boxes:
-                    car_boxes[frame].append(box_attributes)
-                else:
-                    car_boxes[frame] = [box_attributes]
+            if parked_attribute is not None and parked_attribute.text == 'true':
+                continue
+            # Extract frame and bounding box coordinates
+            frame = int(box.get('frame'))
+            box_attributes = {
+                'xtl': float(box.get('xtl')),
+                'ytl': float(box.get('ytl')),
+                'xbr': float(box.get('xbr')),
+                'ybr': float(box.get('ybr')),
+            }                 
+            
+            if frame in car_boxes:
+                car_boxes[frame].append(box_attributes)
+            else:
+                car_boxes[frame] = [box_attributes]
 
     return car_boxes
 
@@ -138,3 +139,18 @@ def visualize_foreground(foreground_segmented, color_frames_75, wait_time=30):
 
     # Close the window after visualization
     cv2.destroyAllWindows()
+
+def save_foreground(foreground_segmented, color_frames_75, alpha, fps=30):
+    output_path = f'foreground_task1_{alpha}.avi'
+    fps = 30 
+    frame_size = (color_frames_75.shape[2], color_frames_75.shape[1])
+
+    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, frame_size)
+
+    for i in range(foreground_segmented.shape[0]):
+        frame = color_frames_75[i].copy()
+
+        frame[foreground_segmented[i]] = [0, 0, 255]
+
+        out.write(frame)
+    out.release()
