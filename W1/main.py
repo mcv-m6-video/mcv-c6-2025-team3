@@ -1,3 +1,4 @@
+import argparse
 import cv2
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -254,8 +255,22 @@ def adaptative_modelling(video_path, annotations_path, alpha, p):
     # Evaluation and computation of metrics
 
     
-    return segmented_frames, mean, variance, std
+    return segmented_frames
 
 
 if __name__=="__main__":
-    foreground_segmented, color_frames_75 = gaussian_modeling(video_path, annotations_path, alpha=11)
+    parser = argparse.ArgumentParser(description='Week 1')
+    parser.add_argument('--task', type=int, default=1, help='Task number')
+
+    args = parser.parse_args()
+
+    if args.task == 1:
+        print("Task 1.1: Gaussian modeling")
+        # foreground_segmented, color_frames_75 = gaussian_modeling(video_path, annotations_path, alpha=11)
+
+    elif args.task == 2:
+        print("Task 2.1: Adaptative modeling")
+        # segmented_frames = adaptative_modelling(video_path, annotations_path, alpha=11, p=0.01)
+
+    elif args.task == 3:
+        print("Task 3.1: SOTA evaluation")
