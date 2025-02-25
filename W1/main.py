@@ -22,42 +22,43 @@ if __name__=="__main__":
         print("Task 1.1: Gaussian modeling")
         bboxes_gt = read_annonations(annotations_path)
         
-        for alpha in [2,4,6,9,10,11,12,13]:
-                foreground_segmented, color_frames_75, first_frame = gaussian_modeling(video_path, alpha)
+        for alpha in  [1,4,6]:
+            print(f'Alpha: {alpha}')
+            foreground_segmented, color_frames_75, first_frame = gaussian_modeling(video_path, alpha)
 
-                with open(f'data_{alpha}.pkl', 'wb') as f:
-                    pickle.dump({'foreground_segmented': foreground_segmented, 'color_frames_75': color_frames_75, 'first_frame': first_frame}, f)
-                
-                save_foreground(foreground_segmented, color_frames_75, alpha)
+            with open(f'output_task_1/data_{alpha}.pkl', 'wb') as f:
+                pickle.dump({'foreground_segmented': foreground_segmented, 'color_frames_75': color_frames_75, 'first_frame': first_frame}, f)
+            
+            save_foreground(foreground_segmented, color_frames_75, alpha)
 
-                """
-                with open(f'data_{alpha}.pkl', 'rb') as f:
-                    data = pickle.load(f)
+            """
+            with open(f'data_{alpha}.pkl', 'rb') as f:
+                data = pickle.load(f)
 
-                foreground_segmented = data['foreground_segmented']
-                color_frames_75 = data['color_frames_75']
-                first_frame = data['first_frame']
-                """
-                
-                bboxes_predict = compute_bbox(foreground_segmented, color_frames_75, alpha, first_frame+1)
+            foreground_segmented = data['foreground_segmented']
+            color_frames_75 = data['color_frames_75']
+            first_frame = data['first_frame']
+            """
+            
+            bboxes_predict = compute_bbox(foreground_segmented, color_frames_75, alpha, first_frame+1)
 
-                """
-                with open(f'bbox_task1_{str(alpha)}.pkl', 'rb') as f:
-                    data = pickle.load(f)
+            """
+            with open(f'bbox_task1_{str(alpha)}.pkl', 'rb') as f:
+                data = pickle.load(f)
 
-                bboxes_predict = data['bboxes']
-                """
-                
-                #create coco.json
-                bbox2Coco(bboxes_gt, alpha, 'gt')
-                bbox2Coco(bboxes_predict, alpha, 'predict', f'coco_gt_{alpha}.json')
-                
-                result_global, result, result_auto = evaluate(color_frames_75, first_frame+1, alpha, 0.50, f'coco_gt_{alpha}.json', f'coco_predict_{alpha}.json')
+            bboxes_predict = data['bboxes']
+            """
+            
+            #create coco.json
+            bbox2Coco(bboxes_gt, alpha, 'gt')
+            bbox2Coco(bboxes_predict, alpha, 'predict', f'output_task_1/coco_gt_{alpha}.json')
+            
+            result_global, result, result_auto = evaluate(color_frames_75, first_frame+1, alpha, 0.50, f'output_task_1/coco_gt_{alpha}.json', f'output_task_1/coco_predict_{alpha}.json')
 
-                print(f'Alpha: {alpha}, Global: {result_global:.4f},  byFrame: {result:.4f}, byFrame auto: {result_auto:.4f}')
+            print(f'Alpha: {alpha}, Global: {result_global:.4f},  byFrame: {result:.4f}, byFrame auto: {result_auto:.4f}')
 
-                del foreground_segmented, color_frames_75, first_frame, bboxes_predict
-                gc.collect()
+            del foreground_segmented, color_frames_75, first_frame, bboxes_predict
+            gc.collect()
 
     elif args.task == 2:
         print("Task 2.1: Adaptative modeling")

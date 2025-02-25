@@ -51,7 +51,7 @@ def segment_foreground_chunks(frames, mean, std, alpha):
     return np.concatenate(foreground_results, axis=0).astype(bool)
 
 # TASK 1.1: Gaussian modeling
-def gaussian_modeling(video_path, annotations_path, alpha):
+def gaussian_modeling(video_path, alpha):
 
     # Read video to get frames from it
     color_frames, gray_frames = read_video(video_path)
@@ -64,7 +64,8 @@ def gaussian_modeling(video_path, annotations_path, alpha):
     mean, std = compute_mean_and_std(gray_frames_25)
 
     # Segment foreground
-    foreground_segmented = segment_foreground_chunks(gray_frames_75, mean, std, alpha)
+    foreground_segmented = segment_foreground(gray_frames_75, mean, std, alpha)
+    # foreground_segmented = segment_foreground_chunks(gray_frames_75, mean, std, alpha)
 
     return foreground_segmented, color_frames_75, len(color_frames_25)
 
@@ -73,7 +74,7 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame):
     foreground_gray = (foreground_segmented * 255).astype(np.uint8)
     color_frame = frames.copy()
 
-    output_path = f'bbox_task1_{alpha}.avi'
+    output_path = f'output_task_1/bbox_task1_{alpha}.avi'
     fps = 30 
     frame_size = (color_frame.shape[2], color_frame.shape[1])
 
@@ -114,7 +115,7 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame):
 
     out.release()
 
-    with open(f'bbox_task1_{alpha}.pkl', 'wb') as f:
+    with open(f'output_task_1/bbox_task1_{alpha}.pkl', 'wb') as f:
         pickle.dump({'bboxes': bbox_dict}, f)
     
     return bbox_dict
@@ -171,7 +172,7 @@ def bbox2Coco(bboxes_dict, alpha, option, gt_json=False):
     else:
         pass
 
-    with open(f'coco_{option}_{alpha}.json', "w") as f:
+    with open(f'output_task_1/coco_{option}_{alpha}.json', "w") as f:
         json.dump(coco_json, f)
     
     return coco_json
@@ -182,7 +183,7 @@ def evaluate(frames, first_frame, alpha, K, gt_path, predict_path):
         predict = gt.loadRes(predict_path)
         img_ids = set(gt.getImgIds())
 
-        output_path = f'eva_task1_{alpha}.avi'
+        output_path = f'output_task_1/eva_task1_{alpha}.avi'
         fps = 20 
         frame_size = (frames.shape[2], frames.shape[1])
 

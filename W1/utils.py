@@ -141,7 +141,7 @@ def visualize_foreground(foreground_segmented, color_frames_75, wait_time=30):
     cv2.destroyAllWindows()
 
 def save_foreground(foreground_segmented, color_frames_75, alpha, fps=30):
-    output_path = f'foreground_task1_{alpha}.avi'
+    output_path = f'output_task_1/foreground_task1_{alpha}.avi'
     fps = 30 
     frame_size = (color_frames_75.shape[2], color_frames_75.shape[1])
 
