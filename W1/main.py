@@ -1,8 +1,9 @@
 import argparse
 import gc
 from pathlib import Path
-
-from utils import read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate
+import cv2
+import numpy as np
+from utils import read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video
 from task_1 import gaussian_modeling
 from task_2 import find_alpha, find_rho
 from task_3 import state_of_the_art_background_estimation
@@ -17,7 +18,21 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    args.task = 2
+    args.task = 3
+
+    color_frames, gray_frames = read_video(video_path)
+
+    color_frames_resized = []
+    gray_frames_resized = []
+
+    for f_color, f_gray in zip(color_frames, gray_frames):
+        color_frames_resized.append(cv2.resize(f_color, (960, 540), interpolation=cv2.INTER_AREA))
+        gray_frames_resized.append(cv2.resize(f_gray, (960, 540), interpolation=cv2.INTER_AREA))
+
+    color_frames = np.array(color_frames_resized, dtype=np.uint8)
+    gray_frames = np.array(gray_frames_resized, dtype=np.uint8)
+
+    bboxes_gt = read_annonations(annotations_path)
 
     # python main.py --task 1
     if args.task == 1:
@@ -25,11 +40,10 @@ if __name__=="__main__":
         output_folder = Path('output_task_1')
         output_folder.mkdir(exist_ok=True)
 
-        bboxes_gt = read_annonations(annotations_path)
 
         for alpha in [2,4,6,9,10,11,12,13]:
             print(f'Alpha: {alpha}')
-            foreground_segmented, color_frames_75, first_frame = gaussian_modeling(video_path, alpha)
+            foreground_segmented, color_frames_75, first_frame = gaussian_modeling(color_frames.copy(), gray_frames.copy(), alpha)
 
             save_foreground(foreground_segmented, color_frames_75, alpha, output_folder)
 
@@ -50,13 +64,16 @@ if __name__=="__main__":
         print("Task 2.1: Adaptative modeling")
         output_folder = Path('output_task_2')
         output_folder.mkdir(exist_ok=True)
-        bboxes_gt = read_annonations(annotations_path)
 
-        alpha = find_alpha(video_path, bboxes_gt, output_folder)
-        rho = find_rho(video_path, bboxes_gt, alpha,output_folder)
+        alpha = find_alpha(color_frames.copy(), gray_frames.copy(), bboxes_gt, output_folder)
+        rho = find_rho(color_frames.copy(), gray_frames.copy(), bboxes_gt, alpha,output_folder)
 
     elif args.task == 3:
         output_folder = Path('output_task_3')
         output_folder.mkdir(exist_ok=True)
         print("Task 3.1: SOTA evaluation")
-        state_of_the_art_background_estimation(video_path, annotations_path, technique='MOG2')
+        for technique in ['MOG2', 'LSBP', 'CNT', 'GSOC', 'KNN']:
+            try:
+                state_of_the_art_background_estimation(color_frames.copy(), gray_frames.copy(), bboxes_gt, output_folder, technique)
+            except:
+                print("ERROR", technique)

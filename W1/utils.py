@@ -41,7 +41,7 @@ def read_video(video_path):
         if not ret:
             print("End of video or cannot read frame.")
             break
-
+        frame = frame.astype(np.uint8)
         color_frames.append(frame)
         gray_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
 
@@ -49,7 +49,7 @@ def read_video(video_path):
     video.release()
 
     # Return frames as NumPy arrays
-    return np.array(color_frames), np.array(gray_frames)
+    return np.array(color_frames, dtype=np.uint8), np.array(gray_frames, dtype=np.uint8)
 
 def split_video_25_75(video_frames):
     """
@@ -237,6 +237,45 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame, output_folder, 
 
     return bbox_dict
 
+def bbox_dict(foreground_segmented, idx_frame, output):
+
+    foreground_gray = np.copy(foreground_segmented).astype(np.uint8) * 255
+
+    bbox_dict = {}
+
+    for idx, gray_frame in enumerate(foreground_gray):
+        frame = cv2.medianBlur(gray_frame, 5)
+        frame = cv2.morphologyEx(frame, cv2.MORPH_CLOSE, np.ones((5,5), np.uint8))
+        frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
+        kernel = np.ones((3,3), np.uint8)
+        frame = cv2.dilate(frame, kernel, iterations=6)
+        frame = cv2.erode(frame, kernel, iterations=4)
+
+        total_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(frame, connectivity=4)
+
+        bbox_list = []
+
+        for i in range(1, total_labels):
+            x, y, w, h, area = stats[i]
+            bbox_area = w * h
+            if bbox_area > 0 and (area / bbox_area) > 0.5 and area > 1000:
+                bbox = {
+                "xtl": float(x),
+                "ytl": float(y),
+                "xbr": float(x + w),
+                "ybr": float(y + h)
+                }
+                bbox_list.append(bbox)
+
+        if bbox_list:
+            bbox_dict[idx+idx_frame] = bbox_list
+
+    with open(output, 'wb') as f:
+        pickle.dump({'bboxes': bbox_dict}, f)
+
+
+    return bbox_dict
+
 def bbox2Coco(bboxes_dict, alpha, option, output_folder, gt_json=False):
 
     if option == 'gt':
@@ -302,7 +341,7 @@ def evaluate(frames, first_frame, alpha, K, gt_path, predict_path, output_folder
         img_ids = set(gt.getImgIds())
 
         if rho is None:
-            output_path = output_folder / f'eva_task1_{alpha}.avi'
+            output_path = output_folder / f'eva_task_{alpha}.avi'
         else:
             output_path = output_folder / f'eva_task2_{alpha}_{rho}.avi'
 
@@ -364,7 +403,7 @@ def evaluate(frames, first_frame, alpha, K, gt_path, predict_path, output_folder
         coco_eval.stats[1]
 
     if rho is None:
-        frames2gif(frames, output_folder / f'eva_task1_{alpha}.gif')
+        frames2gif(frames, output_folder / f'eva_task_{alpha}.gif')
 
     else:
         frames2gif(frames, output_folder / f'eva_task2_{alpha}_{rho}.gif')

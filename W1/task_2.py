@@ -1,7 +1,7 @@
 import numpy as np
 import gc
 
-from utils import read_video, split_video_25_75, save_foreground, compute_bbox, bbox2Coco, evaluate
+from utils import split_video_25_75, save_foreground, compute_bbox, bbox2Coco, evaluate
 
 # TASK 2.1: Adaptative modeling
 def variable_background_modeling(gray_frames_25):
@@ -30,9 +30,7 @@ def variable_background_modeling(gray_frames_25):
     return mean, variance, std
 
 # TASK 2.1: Adaptative modeling
-def adaptative_modelling(video_path, alpha, p):
-    # Read video to get frames from it
-    color_frames, gray_frames = read_video(video_path)
+def adaptative_modelling(color_frames, gray_frames, alpha, p):
 
     # Separate video in first 25% and second 75%
     color_frames_25, color_frames_75 = split_video_25_75(color_frames)
@@ -62,8 +60,8 @@ def adaptative_modelling(video_path, alpha, p):
     return np.array(segmented_frames), color_frames_75, len(color_frames_25)
 
 
-def process(video_path, bboxes_gt, alpha, rho, output_folder):
-    segmented_frames, color_frames_75, first_frame = adaptative_modelling(video_path, alpha, rho)
+def process(color_frames, gray_frames, bboxes_gt, alpha, rho, output_folder):
+    segmented_frames, color_frames_75, first_frame = adaptative_modelling(color_frames, gray_frames, alpha, rho)
 
     save_foreground(segmented_frames, color_frames_75, alpha, output_folder, rho)
 
@@ -82,12 +80,12 @@ def process(video_path, bboxes_gt, alpha, rho, output_folder):
     return result_global
 
 
-def find_alpha(video_path, bboxes_gt, output_folder):
+def find_alpha(color_frames, gray_frames, bboxes_gt, output_folder):
     rho = 0.05
     best_alpha = 0
     best_result = 0
     for alpha in [2, 2.5, 3, 5, 7, 9, 11]:
-        result = process(video_path, bboxes_gt, alpha, rho, output_folder)
+        result = process(color_frames, gray_frames, bboxes_gt, alpha, rho, output_folder)
         if result > best_result:
             best_result = result
             best_alpha = alpha
@@ -95,13 +93,13 @@ def find_alpha(video_path, bboxes_gt, output_folder):
     return best_alpha
 
 
-def find_rho(video_path, bboxes_gt, alpha, output_folder):
+def find_rho(color_frames, gray_frames, bboxes_gt, alpha, output_folder):
 
     best_rho = 0
     best_result = 0
 
     for rho in [0.01, 0.03, 0.07, 0.1, 0.3]:
-        result = process(video_path, bboxes_gt, alpha, rho, output_folder)
+        result = process(color_frames, gray_frames, bboxes_gt, alpha, rho, output_folder)
         if result > best_result:
             best_result = result
             best_rho = rho

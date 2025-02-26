@@ -1,5 +1,5 @@
 import numpy as np
-from utils import read_video, split_video_25_75
+from utils import split_video_25_75
 
 def compute_mean_and_std(frames):
     """Compute mean and variance of pixels in the first 25% of the 
@@ -44,10 +44,7 @@ def segment_foreground_chunks(frames, mean, std, alpha):
     return np.concatenate(foreground_results, axis=0).astype(bool)
 
 # TASK 1.1: Gaussian modeling
-def gaussian_modeling(video_path, alpha):
-
-    # Read video to get frames from it
-    color_frames, gray_frames = read_video(video_path)
+def gaussian_modeling(color_frames, gray_frames, alpha):
 
     # Separate video in first 25% and second 75%
     color_frames_25, color_frames_75 = split_video_25_75(color_frames)
