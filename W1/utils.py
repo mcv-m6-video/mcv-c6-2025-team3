@@ -42,6 +42,7 @@ def read_video(video_path):
             print("End of video or cannot read frame.")
             break
         frame = frame.astype(np.uint8)
+
         color_frames.append(frame)
         gray_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
 
@@ -174,7 +175,7 @@ def save_foreground(foreground_segmented, color_frames_75, alpha, output_folder,
 
 
 def frames2gif(frames_list, output_gif, fps=30):
-   with imageio.get_writer(output_gif, mode='I', fps=fps) as writer:
+   with imageio.get_writer(output_gif, mode='I', duration=1000 / fps) as writer:
         for frame in frames_list:
             frame_resized = cv2.resize(frame, (320, 180), interpolation=cv2.INTER_AREA)
             frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
