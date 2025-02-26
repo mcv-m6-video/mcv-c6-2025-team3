@@ -18,19 +18,9 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    args.task = 3
+    args.task = 2
 
     color_frames, gray_frames = read_video(video_path)
-
-    color_frames_resized = []
-    gray_frames_resized = []
-
-    for f_color, f_gray in zip(color_frames, gray_frames):
-        color_frames_resized.append(cv2.resize(f_color, (960, 540), interpolation=cv2.INTER_AREA))
-        gray_frames_resized.append(cv2.resize(f_gray, (960, 540), interpolation=cv2.INTER_AREA))
-
-    color_frames = np.array(color_frames_resized, dtype=np.uint8)
-    gray_frames = np.array(gray_frames_resized, dtype=np.uint8)
 
     bboxes_gt = read_annonations(annotations_path)
 
