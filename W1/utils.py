@@ -1,3 +1,4 @@
+import os
 import cv2
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -10,7 +11,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import io
 from contextlib import redirect_stdout
-from PIL import Image
+from PIL import Image, ImageSequence
 
 
 def read_video(video_path):
@@ -423,28 +424,3 @@ def evaluate(frames, first_frame, alpha, K, gt_path, predict_path, output_folder
         frames2gif(frames, output_folder / f'eva_task2_{alpha}_{rho}.gif')
 
     return coco_eval.stats[1], np.mean(map_result), np.mean(map_result_auto)
-
-
-def cut_gif(input_path, output_path, num_frames):
-    # Open GIF
-    gif = Image.open(input_path)
-
-    # Get total frames
-    total_frames = gif.n_frames
-
-    # Determine frame step to evenly pick num_frames
-    step = max(1, total_frames // num_frames)
-
-    selected_frames = []
-    
-    for i in range(0, total_frames, step):
-        gif.seek(i)
-        selected_frames.append(gif.copy())
-
-        # Stop if we reach the desired number of frames
-        if len(selected_frames) >= num_frames:
-            break
-
-    # Save new GIF
-    selected_frames[0].save(output_path, save_all=True, append_images=selected_frames[1:], loop=0)
-

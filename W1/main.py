@@ -3,7 +3,7 @@ import gc
 from pathlib import Path
 import cv2
 import numpy as np
-from utils import cut_gif, read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video
+from utils import cut_first_n_frames, read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video
 from task_1 import gaussian_modeling
 from task_2 import find_alpha, find_rho
 from task_3 import state_of_the_art_background_estimation
@@ -65,20 +65,6 @@ if __name__=="__main__":
                 state_of_the_art_background_estimation(color_frames.copy(), gray_frames.copy(), bboxes_gt, output_folder, technique)
             except:
                 print("ERROR", technique)
-    elif args.task == 4:
-        print("cutting gifs...")
-        # Example usage:
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_MOG2.gif", "gif/morph_task_MOG2.gif", 20) 
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_MOG2.gif", "gif/pre_morph_task_MOG2.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_LSBP.gif", "gif/morph_task_LSBP.gif", 20) 
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_LSBP.gif", "gif/pre_morph_task_LSBP.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_CNT.gif", "gif/morph_task_CNT.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_CNT.gif", "gif/pre_morph_task_CNT.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_GSOC.gif", "gif/morph_task_GSOC.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_GSOC.gif", "gif/pre_morph_task_GSOC.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_KNN.gif", "gif/morph_task_KNN.gif", 20)
-        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_KNN.gif", "gif/pre_morph_task_KNN.gif", 20)
-
     else:
         print('Task not implemented')
         exit(1)
