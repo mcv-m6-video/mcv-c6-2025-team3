@@ -1,9 +1,8 @@
 import argparse
 import gc
 from pathlib import Path
-import cv2
 import numpy as np
-from utils import cut_first_n_frames, read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video
+from utils import read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video, trim_gif
 from task_1 import gaussian_modeling
 from task_2 import find_alpha, find_rho
 from task_3 import state_of_the_art_background_estimation
@@ -29,7 +28,7 @@ if __name__=="__main__":
         output_folder.mkdir(exist_ok=True)
 
 
-        for alpha in [2,4,6,9,10,11,12,13]:
+        for alpha in [0.5, 1]:
             print(f'Alpha: {alpha}')
             foreground_segmented, color_frames_75, first_frame = gaussian_modeling(color_frames.copy(), gray_frames.copy(), alpha)
 

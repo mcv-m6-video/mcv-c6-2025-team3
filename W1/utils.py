@@ -424,3 +424,17 @@ def evaluate(frames, first_frame, alpha, K, gt_path, predict_path, output_folder
         frames2gif(frames, output_folder / f'eva_task2_{alpha}_{rho}.gif')
 
     return coco_eval.stats[1], np.mean(map_result), np.mean(map_result_auto)
+
+def trim_gif(input_gif, output_gif, duration=10):
+    gif = Image.open(input_gif)
+
+    frame_rate = gif.info['duration']  
+    frames = []
+    
+    for i, frame in enumerate(ImageSequence.Iterator(gif)):
+        if i * frame_rate / 1000 >= duration: 
+            break
+        frames.append(frame.copy())
+
+    frames[0].save(output_gif, save_all=True, append_images=frames[1:], duration=frame_rate, loop=0)
+    print(f"Trimmed GIF saved to {output_gif}")
