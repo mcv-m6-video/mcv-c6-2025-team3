@@ -6,9 +6,8 @@ import gc
 def state_of_the_art_background_estimation(color_frames, gray_frames, bboxes_gt, output_folder, technique):
 
     # Create background substractor model depending on the technique chosen
-    # if technique == 'MOG':
-    #     bg_subtractor = cv2.createBackgroundSubtractorMOG() #deprectaed
-
+    if technique == 'MOG':
+        bg_subtractor = cv2.bgsegm.createBackgroundSubtractorMOG()
     if technique == 'MOG2':
         bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=50,varThreshold=25)
     elif technique == 'LSBP':
@@ -65,7 +64,7 @@ def state_of_the_art_background_estimation(color_frames, gray_frames, bboxes_gt,
     out.release()
     frames2gif(frames, f'{output_folder}/foreground_task3_{technique}.gif')
     
-    bboxes_predict = bbox_dict(foreground_estimation, first_frame+1, f'{output_folder}/bbox_task3_{technique}.pkl')
+    bboxes_predict = bbox_dict(foreground_estimation, first_frame+1,output_folder, f'{output_folder}/bbox_task3_{technique}.pkl', technique)
 
     bbox2Coco(bboxes_gt, technique, 'gt', output_folder)
     bbox2Coco(bboxes_predict, technique, 'predict', output_folder, f'{output_folder}/coco_gt_{technique}.json')

@@ -10,6 +10,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import io
 from contextlib import redirect_stdout
+from PIL import Image
 
 
 def read_video(video_path):
@@ -196,7 +197,7 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame, output_folder, 
     out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, frame_size)
 
     bbox_dict = {}
-
+    frames = []
     for idx, gray_frame in enumerate(foreground_gray):
         frame = cv2.medianBlur(gray_frame, 5)
         frame = cv2.morphologyEx(frame, cv2.MORPH_CLOSE, np.ones((5,5), np.uint8))
@@ -204,6 +205,8 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame, output_folder, 
         kernel = np.ones((3,3), np.uint8)
         frame = cv2.dilate(frame, kernel, iterations=6)
         frame = cv2.erode(frame, kernel, iterations=4)
+
+        frames.append(frame)
 
         total_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(frame, connectivity=4)
 
@@ -228,6 +231,9 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame, output_folder, 
         if bbox_list:
             bbox_dict[idx+idx_frame] = bbox_list
 
+    frames2gif(foreground_gray, output_folder / f'pre_morph_task_{alpha}.gif')
+    frames2gif(frames, output_folder / f'morph_task_{alpha}.gif')
+
     out.release()
     if rho is None:
         with open(output_folder / f'bbox_task1_{alpha}.pkl', 'wb') as f:
@@ -238,11 +244,13 @@ def compute_bbox(foreground_segmented, frames, alpha, idx_frame, output_folder, 
 
     return bbox_dict
 
-def bbox_dict(foreground_segmented, idx_frame, output):
+def bbox_dict(foreground_segmented, idx_frame, output_folder, output, technique):
 
     foreground_gray = np.copy(foreground_segmented).astype(np.uint8) * 255
 
     bbox_dict = {}
+
+    frames = []
 
     for idx, gray_frame in enumerate(foreground_gray):
         frame = cv2.medianBlur(gray_frame, 5)
@@ -251,6 +259,8 @@ def bbox_dict(foreground_segmented, idx_frame, output):
         kernel = np.ones((3,3), np.uint8)
         frame = cv2.dilate(frame, kernel, iterations=6)
         frame = cv2.erode(frame, kernel, iterations=4)
+
+        frames.append(frame)
 
         total_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(frame, connectivity=4)
 
@@ -270,6 +280,9 @@ def bbox_dict(foreground_segmented, idx_frame, output):
 
         if bbox_list:
             bbox_dict[idx+idx_frame] = bbox_list
+
+    frames2gif(foreground_gray, output_folder / f'pre_morph_task_{technique}.gif')
+    frames2gif(frames, output_folder / f'morph_task_{technique}.gif')
 
     with open(output, 'wb') as f:
         pickle.dump({'bboxes': bbox_dict}, f)
@@ -410,3 +423,28 @@ def evaluate(frames, first_frame, alpha, K, gt_path, predict_path, output_folder
         frames2gif(frames, output_folder / f'eva_task2_{alpha}_{rho}.gif')
 
     return coco_eval.stats[1], np.mean(map_result), np.mean(map_result_auto)
+
+
+def cut_gif(input_path, output_path, num_frames):
+    # Open GIF
+    gif = Image.open(input_path)
+
+    # Get total frames
+    total_frames = gif.n_frames
+
+    # Determine frame step to evenly pick num_frames
+    step = max(1, total_frames // num_frames)
+
+    selected_frames = []
+    
+    for i in range(0, total_frames, step):
+        gif.seek(i)
+        selected_frames.append(gif.copy())
+
+        # Stop if we reach the desired number of frames
+        if len(selected_frames) >= num_frames:
+            break
+
+    # Save new GIF
+    selected_frames[0].save(output_path, save_all=True, append_images=selected_frames[1:], loop=0)
+

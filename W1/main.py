@@ -3,22 +3,20 @@ import gc
 from pathlib import Path
 import cv2
 import numpy as np
-from utils import read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video
+from utils import cut_gif, read_annonations, save_foreground, compute_bbox, bbox2Coco, evaluate, read_video
 from task_1 import gaussian_modeling
 from task_2 import find_alpha, find_rho
 from task_3 import state_of_the_art_background_estimation
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
-video_path = r'./AICity_data/train/S03/c010/vdo.avi'
-annotations_path =  r'./ai_challenge_s03_c010-full_annotation.xml'
+video_path = r'/Users/andrea.sanchez/Desktop/AICity_data/train/S03/c010/vdo.avi'
+annotations_path =  r'/Users/andrea.sanchez/Desktop/ai_challenge_s03_c010-full_annotation.xml'
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Week 1')
     parser.add_argument('--task', type=int, default=1, help='Task number')
 
     args = parser.parse_args()
-
-    args.task = 2
 
     color_frames, gray_frames = read_video(video_path)
 
@@ -62,8 +60,25 @@ if __name__=="__main__":
         output_folder = Path('output_task_3')
         output_folder.mkdir(exist_ok=True)
         print("Task 3.1: SOTA evaluation")
-        for technique in ['MOG2', 'LSBP', 'CNT', 'GSOC', 'KNN']:
+        for technique in ['MOG','MOG2','LSBP', 'CNT', 'GSOC', 'KNN']:
             try:
                 state_of_the_art_background_estimation(color_frames.copy(), gray_frames.copy(), bboxes_gt, output_folder, technique)
             except:
                 print("ERROR", technique)
+    elif args.task == 4:
+        print("cutting gifs...")
+        # Example usage:
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_MOG2.gif", "gif/morph_task_MOG2.gif", 20) 
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_MOG2.gif", "gif/pre_morph_task_MOG2.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_LSBP.gif", "gif/morph_task_LSBP.gif", 20) 
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_LSBP.gif", "gif/pre_morph_task_LSBP.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_CNT.gif", "gif/morph_task_CNT.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_CNT.gif", "gif/pre_morph_task_CNT.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_GSOC.gif", "gif/morph_task_GSOC.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_GSOC.gif", "gif/pre_morph_task_GSOC.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/morph_task_KNN.gif", "gif/morph_task_KNN.gif", 20)
+        cut_gif("/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W1/output_task_3/pre_morph_task_KNN.gif", "gif/pre_morph_task_KNN.gif", 20)
+
+    else:
+        print('Task not implemented')
+        exit(1)
