@@ -17,9 +17,9 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    color_frames, gray_frames = read_video(video_path)
+    # color_frames, gray_frames = read_video(video_path)
 
-    bboxes_gt = read_annonations(annotations_path)
+    # bboxes_gt = read_annonations(annotations_path)
 
     # python main.py --task 1
     if args.task == 1:
@@ -56,14 +56,22 @@ if __name__=="__main__":
         rho = find_rho(color_frames.copy(), gray_frames.copy(), bboxes_gt, alpha,output_folder)
 
     elif args.task == 3:
+        print("Task 3.1: SOTA evaluation")
         output_folder = Path('output_task_3')
         output_folder.mkdir(exist_ok=True)
-        print("Task 3.1: SOTA evaluation")
+        
         for technique in ['MOG','MOG2','LSBP', 'CNT', 'GSOC', 'KNN']:
             try:
                 state_of_the_art_background_estimation(color_frames.copy(), gray_frames.copy(), bboxes_gt, output_folder, technique)
             except:
                 print("ERROR", technique)
+    elif args.task == 4:
+        print("Cutting gifs...")
+        for alpha, rho in [(2,0.05), (2.5,0.05), (3,0.05), (5,0.05), (7,0.05), (9,0.05), (11,0.05), (3,0.01), (3,0.03), (3,0.07), (3,0.1), (3,0.3)]:
+            trim_gif(f"output_task_2/foreground_task2_{alpha}_{rho}.gif", f"./gif/foreground_task2_{alpha}_{rho}.gif")
+            trim_gif(f"output_task_2/eva_task2_{alpha}_{rho}.gif", f"./gif/eva_task2_{alpha}_{rho}.gif")
+            trim_gif(f"output_task_2/morph_task_{alpha}.gif", f"./gif/morph_task_{alpha}.gif")
+            trim_gif(f"output_task_2/pre_morph_task_{alpha}.gif", f"./gif/pre_morph_task_{alpha}.gif")
     else:
         print('Task not implemented')
         exit(1)
