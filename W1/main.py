@@ -17,9 +17,9 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    # color_frames, gray_frames = read_video(video_path)
+    color_frames, gray_frames = read_video(video_path)
 
-    # bboxes_gt = read_annonations(annotations_path)
+    bboxes_gt = read_annonations(annotations_path)
 
     # python main.py --task 1
     if args.task == 1:
