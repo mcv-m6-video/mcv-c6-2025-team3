@@ -33,3 +33,4 @@ pip install -r requirements.txt
 Go to the README.md of each Week to know how to run each part of the project.
 
 - **W1**: [Readme for Week 1](https://github.com/mcv-m6-video/mcv-c6-2025-team3/blob/main/W1/README.md)
+- **W2**: [Readme for Week 2](https://github.com/mcv-m6-video/mcv-c6-2025-team3/blob/main/W2/README.md)
