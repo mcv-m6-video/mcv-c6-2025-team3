@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from utils import trim_gif
+from utils import read_annonations, trim_gif
 from task_1_1 import detect_cars_yolov8n
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
@@ -20,12 +20,14 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
+    bboxes_gt = read_annonations(annotations_path)
+
     # python main.py --task 1
     if args.task == 1:
         output_folder = Path('output_task_1')
         output_folder.mkdir(exist_ok=True)
         print("Task 1.1: Object detection off-the-shelf...")
-        detect_cars_yolov8n(video_path, output_folder)
+        predicted_bbxes = detect_cars_yolov8n(video_path, output_folder)
 
         # Cut the gif to 10 seconds for power point
         cut_gif = output_folder / 'yolov8n_off_shelf_detection.gif'

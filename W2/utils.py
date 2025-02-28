@@ -1,7 +1,42 @@
 from PIL import Image, ImageSequence
 import cv2
+import xml.etree.ElementTree as ET
 import imageio
 
+def read_annonations(annotations_path):
+    "For each frame we will return a list of objects containing"
+    "the bounding boxes present in that frame"
+    "car_boxes[1417] to obtain all bounding boxes in frame 1417"
+    print('Reading annotations...')
+    # Parse the XML file
+    tree = ET.parse(annotations_path)
+    root = tree.getroot()
+
+    car_boxes = {}  # Store extracted boxes here
+
+    # Iterate over all <track> elements
+    for track in root.findall('.//track[@label="car"]'):
+        # Iterate over all <box> elements within each track
+        for box in track.findall('box'):
+            # Check if the <attribute> name is not 'parked'
+            parked_attribute = box.find('attribute[@name="parked"]')
+            if parked_attribute is not None and parked_attribute.text == 'true':
+                continue
+            # Extract frame and bounding box coordinates
+            frame = int(box.get('frame'))
+            box_attributes = {
+                'xtl': float(box.get('xtl')),
+                'ytl': float(box.get('ytl')),
+                'xbr': float(box.get('xbr')),
+                'ybr': float(box.get('ybr')),
+            }                 
+            
+            if frame in car_boxes:
+                car_boxes[frame].append(box_attributes)
+            else:
+                car_boxes[frame] = [box_attributes]
+
+    return car_boxes
 
 def frames2gif(frames_list, output_gif, fps=30):
    with imageio.get_writer(output_gif, mode='I', duration=1000 / fps) as writer:
@@ -46,3 +81,4 @@ def trim_gif(input_gif, output_gif, start_time=0, end_time=10):
         print(f"Trimmed GIF saved to {output_gif}")
     else:
         print(f"No frames found in the specified time range.")
+
