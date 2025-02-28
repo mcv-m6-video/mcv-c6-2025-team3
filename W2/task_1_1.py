@@ -4,26 +4,6 @@ import cv2
 
 from utils import frames2gif
 
-def get_yolov8_predictions(frame, model, conf_threshold=0.3):
-    """
-    Returns a list of tuples (x1, y1, x2, y2, class_id, confidence) for each detected object.
-    """
-    results = model(frame)  # Run the model on the frame
-    boxes = []
-    
-    # Iterate over all detected results (boxes) in the current frame
-    for result in results:
-        for box in result.boxes:
-            cls_id = int(box.cls[0])
-            conf = float(box.conf[0])  # Confidence score
-            x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates (top-left x1, y1, bottom-right x2, y2)
-            
-            if conf >= conf_threshold:
-                # Add the detection to the list if confidence is above the threshold
-                boxes.append((x1, y1, x2, y2, cls_id, conf))
-    
-    return boxes
-
 def detect_cars_yolov8n(video_path, output_folder):
     print("Detecting cars using YOLOv8n...")
     # Define the path to the model file
