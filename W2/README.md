@@ -12,4 +12,8 @@ There are 4 tasks that can be runned:
 
 `--task 3`: Task 1.3: K-Fold Cross Validation
 
-`--task 4`: Task 2: Object tracking
+`--task 4`: Task 2.1: Object tracking by overlap
+
+`--task 5`: Task 2.1: Object tracking by Kalman filter
+
+`--task 6`: Task 2.3: Object tracking evaluation

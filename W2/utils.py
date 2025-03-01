@@ -1,3 +1,4 @@
+import os
 from PIL import Image, ImageSequence
 import cv2
 import xml.etree.ElementTree as ET
@@ -82,3 +83,18 @@ def trim_gif(input_gif, output_gif, start_time=0, end_time=10):
     else:
         print(f"No frames found in the specified time range.")
 
+def create_gif(output_filename, start_frame, end_frame, folder):
+    frames = []
+    
+    for i in range(start_frame, end_frame + 1):
+        filename = os.path.join(folder, f"frame_{i}.png")
+        if os.path.exists(filename):
+            frames.append(Image.open(filename))
+        else:
+            print(f"Warning: {filename} not found. Skipping.")
+    
+    if frames:
+        frames[0].save(output_filename, save_all=True, append_images=frames[1:], loop=0)
+        print(f"GIF saved as {output_filename}")
+    else:
+        print("No frames found. GIF not created.")

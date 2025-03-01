@@ -1,7 +1,8 @@
 import argparse
 from pathlib import Path
 
-from utils import read_annonations, trim_gif
+from task_2_1 import object_tracking_by_overlap
+from utils import create_gif, read_annonations, trim_gif
 from task_1_1 import detect_cars_yolov8n
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
@@ -40,8 +41,22 @@ if __name__=="__main__":
         print("Task 1.3: K-Fold Cross Validation...")
         
     elif args.task == 4:
-        print("Task 2: Object tracking...")
+        print("Task 2.1: Object tracking by overlap...")
+        output_folder = Path('output_task_4')
+        output_folder.mkdir(exist_ok=True)
+        object_tracking_by_overlap(video_path, output_folder)
+
+        # Create gifs of tracking detections from different video moments
+        # start_frame = 216
+        # end_frame = 254
+        # create_gif(output_folder/ 'gifs'/ f'yolo_overlap_{start_frame}_{end_frame}.gif', start_frame, end_frame, output_folder)
         
+    elif args.task == 5:
+        print("Task 2.2: Object tracking by Kalman filter...")
+    
+    elif args.task == 6:
+        print("Task 2.3: Object tracking evaluation...")
+
     else:
         print('Task not implemented')
         exit(1)
