@@ -18,6 +18,7 @@
 from __future__ import print_function
 
 import os
+import random
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
@@ -115,6 +116,7 @@ class KalmanBoxTracker(object):
     self.time_since_update = 0
     self.id = KalmanBoxTracker.count
     KalmanBoxTracker.count += 1
+    self.color = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
     self.history = []
     self.hits = 0
     self.hit_streak = 0
@@ -125,7 +127,7 @@ class KalmanBoxTracker(object):
     Updates the state vector with observed bbox.
     """
     self.time_since_update = 0
-    self.history = []
+    # self.history = []
     self.hits += 1
     self.hit_streak += 1
     self.kf.update(convert_bbox_to_z(bbox))

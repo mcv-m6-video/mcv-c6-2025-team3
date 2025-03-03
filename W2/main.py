@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from track_2_2v2 import object_tracking_by_kalman_filter
+from track_2_2 import object_tracking_by_kalman_filter
 from task_2_1 import object_tracking_by_overlap
 from utils import create_gif, read_annonations, trim_gif
 from task_1_1 import detect_cars_yolov8n

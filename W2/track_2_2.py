@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import cv2
 import numpy as np
 
@@ -11,10 +12,11 @@ def save_json(file: dict, name: str):
         json.dump(file, f)
 
 class KalmanFilter:
-    def __init__(self, max_age=10, iou_threshold=0.3):
-        self.max_age = max_age
+    def __init__(self, max_age=30, iou_threshold=0.3):
+        self.max_age = int(max_age)
         self.iou_threshold = iou_threshold
         self.kalman_tracker = Sort(max_age = int(max_age), iou_threshold = float(iou_threshold))
+        
         self.tracker_dict = {}
         self.n_frames = 0
     
@@ -22,10 +24,8 @@ class KalmanFilter:
         self.n_frames += 1
 
     def update(self, bbox_detection):
-        bbox_detection = np.array(bbox_detection)
-
         predicted_tracks = self.kalman_tracker.update(bbox_detection)
-        print('Predicted tracks for frame:', self.n_frames, ':', predicted_tracks)
+        # print('Predicted tracks for frame:', self.n_frames, ':', predicted_tracks)
         if len(predicted_tracks) == 0:
             print(f"Failed to track objects in frame {self.n_frames}")
         self.update_tracker_dict(predicted_tracks)
@@ -35,7 +35,7 @@ class KalmanFilter:
         if predicted_tracks.shape[0] == 0:
             return 
     
-        kalman_predicted_bbox = predicted_tracks[:, :4]
+        kalman_predicted_bbox = predicted_tracks[:, 0:4]
         track_predicted_ids = predicted_tracks[:, 4]
 
         x_min, y_min, x_max, y_max = {},{},{},{}
@@ -44,7 +44,6 @@ class KalmanFilter:
             y_min[str(int(id))] = bbox[1]
             x_max[str(int(id))] = bbox[2]
             y_max[str(int(id))] = bbox[3]
-            print('hola')
 
         self.tracker_dict[self.n_frames] = {
             'x_min': x_min,
@@ -65,17 +64,19 @@ class KalmanFilter:
             # Convert KalmanFilter x to bbox
             bbox = convert_x_to_bbox(track.kf.x).squeeze()
 
+            # color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
             # Draw bbox
-            frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3]), track.color, 4))
+            frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), track.color, 4)
 
             # Draw text box
-            frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[0] + 50), int(bbox[3] - 30)), track.color, -1)
-            frame = cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[0] + 20), int(bbox[3] - 50)), track.color, -1)
+            frame = cv2.putText(frame, str(track.id), (int(bbox[0]), int(bbox[1] + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
             for detection in track.history:
-                x_center = int((detection[0] + detection[2]) / 2)
-                y_center = int((detection[1] + detection[3]) / 2)
-                frame = cv2.circle(frame, (x_center, y_center), 3, track.color, -1)
+                x_center = int((detection[0][0] + detection[0][2]) / 2)
+                y_center = int((detection[0][1] + detection[0][3]) / 2)
+                frame = cv2.circle(frame, (x_center, y_center), 5, track.color, -1)
                 
         return frame
     
@@ -119,12 +120,14 @@ class KalmanFilter:
 
             detections_current_frame = predictions.get(str(frame_id), [])
             # print('Detections', detections_current_frame)
+            
             # Convert to array of [x_min, y_min, x_max, y_max, score]
             frame_boxes = []
             for x_min, y_min, x_max, y_max, id, score in detections_current_frame:
                 bbox =  [x_min, y_min, x_max, y_max, score]
                 frame_boxes.append(bbox)
-            print('Boxes', frame_boxes)
+            frame_boxes = np.array(frame_boxes)
+            # print('Boxes', frame_boxes)
 
             # Update the KalmanFilter with the detections
             self.update(frame_boxes)
@@ -137,9 +140,9 @@ class KalmanFilter:
             if generate_video:
                 out.write(draw)
 
-            self.next_frame()
+            frame_id += 1
         
-        save_json(self.tracker_dict, output_path / 'tracker_dict.json')
+        save_json(self.tracker_dict, output_path / 'kalman_tracker_dict.json')
         cap.release()
         if generate_video:
             out.release()
