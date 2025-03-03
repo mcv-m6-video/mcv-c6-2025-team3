@@ -1,3 +1,4 @@
+import json
 import os
 from ultralytics import YOLO
 import cv2
@@ -66,6 +67,12 @@ def detect_cars_yolov8n(video_path, output_folder):
         # Write the processed frame to the output video
         frames.append(frame)
         # out.write(frame)
+    
+    # Save predictions to a JSON file
+    json_output_path = 'predictions_yolov8n.json'
+    with open(json_output_path, 'w') as json_file:
+        json.dump(predictions, json_file, indent=4)
+    print(f"Predictions saved to {json_output_path}")
 
     frames2gif(frames, output_folder / f'yolov8n_off_shelf_detection.gif')
 
