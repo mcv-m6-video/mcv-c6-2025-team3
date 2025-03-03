@@ -84,33 +84,22 @@ class Tracker:
 
 class Detection():
     def __init__(self, frame_id, bbox):
-        """
-        Initializes a Detection object.
-
-        Parameters:
-        - frame_id (int): The frame number this detection belongs to.
-        - bbox (tuple): A tuple (x_min, y_min, x_max, y_max, class_id, confidence).
-        """
         self.frame_id = frame_id
 
-        # Extract bounding box values
         self.box_x_min = bbox[0]
         self.box_y_min = bbox[1]
         self.box_x_max = bbox[2]
         self.box_y_max = bbox[3]
-        self.class_id = bbox[4]  # Object class
+        self.class_id = bbox[4] 
         self.score = bbox[5]  # Confidence score
 
     def get_bb(self):
-        """Returns the bounding box as (x_min, y_min, x_max, y_max)."""
         return self.box_x_min, self.box_y_min, self.box_x_max, self.box_y_max
     
     def get_score(self):
-        """Returns the confidence score."""
         return self.score
 
     def get_class_id(self):
-        """Returns the class ID."""
         return self.class_id
 
     def compute_iou(self, other):
