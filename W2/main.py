@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from track_2_2 import object_tracking_by_kalman_filter
+from task_2_2 import object_tracking_by_kalman_filter
 from task_2_1 import object_tracking_by_overlap
 from utils import create_gif, read_annonations, trim_gif
 from task_1_1 import detect_cars_yolov8n
@@ -57,6 +57,10 @@ if __name__=="__main__":
         output_folder = Path('output_task_5')
         output_folder.mkdir(exist_ok=True)
         object_tracking_by_kalman_filter(video_path, output_folder)
+
+        # Cut the gif to 10 seconds for power point
+        # cut_gif = output_folder / 'kalman_tracking.gif'
+        # trim_gif(cut_gif, output_folder / 'kalman_trimmed_15_25.gif', start_time=15, end_time=25)
     
     elif args.task == 6:
         print("Task 2.3: Object tracking evaluation...")
