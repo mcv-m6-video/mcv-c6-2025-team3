@@ -4,7 +4,7 @@
 
 Run the following command based on the task that you want to execute: `python main.py --task number_of_task_choosed`
 
-There are 4 tasks that can be runned:
+There are 6 tasks that can be run:
 
 `--task 1`: Task 1.1: Object detection off-the-shelf
 
