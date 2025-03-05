@@ -7,8 +7,8 @@ from utils import create_gif, read_annonations, trim_gif
 from task_1_1 import detect_cars_yolov8n
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
-video_path = r'/Users/andrea.sanchez/Desktop/AICity_data/train/S03/c010/vdo.avi'
-annotations_path =  r'/Users/andrea.sanchez/Desktop/ai_challenge_s03_c010-full_annotation.xml'
+video_path = r'/Users/papallusqueti/Downloads/AICity_data/train/S03/c010/vdo.avi'
+annotations_path =  r'/Users/papallusqueti/Downloads/ai_challenge_s03_c010-full_annotation.xml'
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Week 2')
@@ -63,7 +63,10 @@ if __name__=="__main__":
         # trim_gif(cut_gif, output_folder / 'kalman_trimmed_15_25.gif', start_time=15, end_time=25)
     
     elif args.task == 6:
-        print("Task 2.3: Object tracking evaluation...")
+        print("Task 2.3: Comparing metrics across IoU thresholds...")
+        from task_2_3 import compare_metrics_across_thresholds
+        # Call the function with the base output folder that contains your min_iou_* folders.
+        compare_metrics_across_thresholds(Path('output_task_6'))
 
     else:
         print('Task not implemented')
