@@ -1,0 +1,16 @@
+map: 0.5231
+map_50: 0.9316
+map_75: 0.5360
+map_small: -1.0000
+map_medium: 0.5028
+map_large: 0.6145
+mar_1: 0.0654
+mar_10: 0.5634
+mar_100: 0.5939
+mar_small: -1.0000
+mar_medium: 0.5772
+mar_large: 0.6691
+map_per_class: -1.0000
+mar_100_per_class: -1.0000
+classes: 1.0000
+mIoU: 0.6373
