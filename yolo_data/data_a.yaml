@@ -1,4 +1,0 @@
-train: /home/danielpardo/c6/yolo_data/a/train/images
-val: /home/danielpardo/c6/yolo_data/a/val/images
-names:
-- car
