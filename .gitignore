@@ -1,0 +1,3 @@
+touch .gitignore
+venv_3_10/
+__pycache__/

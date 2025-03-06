@@ -1,5 +1,7 @@
 import argparse
 
+from task_1_1 import optical_flow_off_the_shelf
+
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
 video_path = r'/Users/andrea.sanchez/Desktop/AICity_data/train/S03/c010/vdo.avi'
 annotations_path =  r'/Users/andrea.sanchez/Desktop/ai_challenge_s03_c010-full_annotation.xml'
@@ -18,7 +20,7 @@ if __name__=="__main__":
     # python main.py --task 1
     if args.task == 1:
         print("Task 1.1: Optical flow off-the-shelf")
-        
+        optical_flow_off_the_shelf()
 
     elif args.task == 2:
         print("Task 1.2: Improve tracking with optical flow")
