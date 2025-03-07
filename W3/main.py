@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from task_1_1 import optical_flow_off_the_shelf
 
@@ -20,7 +21,10 @@ if __name__=="__main__":
     # python main.py --task 1
     if args.task == 1:
         print("Task 1.1: Optical flow off-the-shelf")
-        optical_flow_off_the_shelf()
+        output_folder = Path('output_task_1')
+        output_folder.mkdir(exist_ok=True)
+
+        optical_flow_off_the_shelf(output_folder)
 
     elif args.task == 2:
         print("Task 1.2: Improve tracking with optical flow")
