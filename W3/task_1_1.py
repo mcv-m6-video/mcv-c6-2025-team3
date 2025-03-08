@@ -86,6 +86,24 @@ def optical_flow_pyflow(im1,im2,alpha,ratio,min_width,n_outer_FP_iterations,n_in
     run_time = end - start
     return flow_pyflow, flow_img, run_time
 
+def optical_flow_farneback(im1,im2,pyr_scale=0.5,levels=3,winsize=15,iterations=3,poly_n=5,poly_sigma=1.2,flags=0):
+    start = time.time()
+    flow_farneback = cv2.calcOpticalFlowFarneback(
+        im1,
+        im2,
+        flow=None,
+        pyr_scale=pyr_scale,
+        levels=levels,
+        winsize=winsize,
+        iterations=iterations,
+        poly_n=poly_n,
+        poly_sigma=poly_sigma,
+        flags=flags,
+    )
+    end = time.time()
+    run_time = end - start
+    return flow_farneback, run_time
+
 def optical_flow_off_the_shelf(output_folder):
     # Path to KITTI image sequence
     kitti_path = "/Users/andrea.sanchez/Desktop/data_stereo_flow/training/image_0/"
@@ -114,9 +132,23 @@ def optical_flow_off_the_shelf(output_folder):
     colType = 1  # 0 or default:RGB, 1:GRAY (but pass gray image with shape (h,w,1))
 
     # Compute optical flow using pyFlow
-    flow_pyflow, flow_img, run_time = optical_flow_pyflow(img1, img2, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations, colType)
+    flow_pyflow, flow_img, pyflow_time = optical_flow_pyflow(img1, img2, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations, colType)
     output_path = os.path.join(output_folder, "optical_flow_pyflow.png")
     cv2.imwrite(output_path, flow_img)
+
+    # Farneback Parameters
+    pyr_scale = 0.5
+    levels = 3
+    winsize = 15
+    iterations = 3
+    poly_n = 5
+    poly_sigma = 1.2
+    flags = 0
+
+    # Compute optical flow using Farneback
+    farneback_flow, farneback_time = optical_flow_farneback(
+        img1, img2, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags
+    )
 
     # Compute MSEN and PEPN
     flow_gt = load_flow_gt("/Users/andrea.sanchez/Desktop/data_stereo_flow/training/flow_noc/000045_10.png")
@@ -125,12 +157,18 @@ def optical_flow_off_the_shelf(output_folder):
     print("Computed optical flow using pyflow: ", flow_pyflow.shape)
     print(flow_pyflow)
 
+    # metrics for pyflow
     msen, pepn = compute_msen_pepn(flow_pyflow, flow_gt)
-    print("MSEN: ", msen)
-    print("PEPN: ", pepn)
-    print("Run time pyflow: ", run_time)
+    print("MSEN pyflow: ", msen)
+    print("PEPN pyflow: ", pepn)
+    print("Run time pyflow: ", pyflow_time)
 
-    # TODO: Implement optical flow using Farneback
+    # metrics for farneback
+    msen, pepn = compute_msen_pepn(farneback_flow, flow_gt)
+    print("MSEN farneback: ", msen)
+    print("PEPN farneback: ", pepn)
+    print("Run time farneback: ", farneback_time)
+
 
 
 
