@@ -68,12 +68,13 @@ def optical_flow_pyflow(im1,im2,alpha,ratio,min_width,n_outer_FP_iterations,n_in
         col_type,
     )
     print("Optical flow computation using pyFlow complete!")
+    end = time.time()
+    run_time = end - start
+
     #To visualize the flow, we can use the function flow_to_color
     flow_img = flow_to_color(u, v)
 
     flow_pyflow = np.dstack((u, v))
-    end = time.time()
-    run_time = end - start
     return flow_pyflow, flow_img, run_time
 
 def optical_flow_farneback(im1,im2,pyr_scale=0.5,levels=3,winsize=15,iterations=3,poly_n=5,poly_sigma=1.2,flags=0):
@@ -93,7 +94,13 @@ def optical_flow_farneback(im1,im2,pyr_scale=0.5,levels=3,winsize=15,iterations=
     print("Optical flow computation using farneback complete!")
     end = time.time()
     run_time = end - start
-    return flow_farneback, run_time
+
+    print(flow_farneback.shape)
+    print(flow_farneback[:,:,0])
+    print(flow_farneback[:,:,1])
+    # Convert to color visualization
+    flow_img = flow_to_color(flow_farneback[:,:, 0], flow_farneback[:,:, 1])
+    return flow_farneback, flow_img, run_time
 
 def optical_flow_off_the_shelf(output_folder):
     # Path to KITTI image sequence
@@ -101,6 +108,7 @@ def optical_flow_off_the_shelf(output_folder):
     images = os.listdir(kitti_path)
     sequence_45_images = [image for image in images if '000045' in image]
     flow_gt = read_flow_gt("/Users/andrea.sanchez/Desktop/data_stereo_flow/training/flow_noc/000045_10.png")
+    print("Flow GT shape: ", flow_gt.shape)
 
     # Create and save gif from these image sequence
     image1 = Image.open(kitti_path + sequence_45_images[0])
@@ -124,9 +132,9 @@ def optical_flow_off_the_shelf(output_folder):
     colType = 1  # 0 or default:RGB, 1:GRAY (but pass gray image with shape (h,w,1))
 
     # Compute optical flow using pyFlow
-    flow_pyflow, flow_img, pyflow_time = optical_flow_pyflow(img1, img2, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations, colType)
+    flow_pyflow, flow_pyflow_img, pyflow_time = optical_flow_pyflow(img1, img2, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations, colType)
     output_path = os.path.join(output_folder, "optical_flow_pyflow.png")
-    cv2.imwrite(output_path, flow_img)
+    cv2.imwrite(output_path, flow_pyflow_img)
 
     # metrics for pyflow
     msen, pepn = compute_msen_pepn(flow_pyflow, flow_gt)
@@ -144,8 +152,10 @@ def optical_flow_off_the_shelf(output_folder):
     flags = 0
 
     # Compute optical flow using Farneback
-    farneback_flow, farneback_time = optical_flow_farneback(img1, img2, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags)
-    
+    farneback_flow, flow_farneback_img, farneback_time = optical_flow_farneback(img1, img2, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags)
+    output_path2 = os.path.join(output_folder, "optical_flow_farneback.png")
+    cv2.imwrite(output_path2, flow_farneback_img)
+
     # metrics for farneback
     msen2, pepn2 = compute_msen_pepn(farneback_flow, flow_gt)
     print("MSEN farneback: ", msen2)
