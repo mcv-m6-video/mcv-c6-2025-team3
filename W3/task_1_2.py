@@ -1,19 +1,51 @@
+import sys
+from PIL import Image
 import os
+import time
 import numpy as np
+from pyflow import coarse2fine_flow
 import cv2
+import numpy as np
 from ultralytics import YOLO
 import torch
+import cv2
+import matplotlib.pyplot as plt
 import json
+import os
 from pathlib import Path
+import random
+import cv2
+import numpy as np
 from sortOF import Sort, convert_x_to_bbox
+import os
+from ultralytics import YOLO
+import cv2
 import xml.etree.ElementTree as ET
+import torch
+from torchvision.io.image import read_image
+from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights
+from torchvision.utils import draw_bounding_boxes
+from torchvision.transforms.functional import to_pil_image
+from torchmetrics.detection import MeanAveragePrecision
+from torchvision.io.image import read_image
+from torchvision.models.detection import (fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights)
+from torchvision.utils import draw_bounding_boxes
+from torchvision.transforms.functional import to_pil_image
+from torchmetrics.detection import MeanAveragePrecision
+import torch
+from PIL import Image
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from pathlib import Path
+import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import imageio
 import subprocess
 import ptlflow
 from ptlflow.utils.io_adapter import IOAdapter
+from ptlflow.utils import flow_utils
 
 def annonations2mot(gt_path, output_path):
+    gt_detections = {}
     tree = ET.parse(gt_path)
     root = tree.getroot()
 
@@ -98,19 +130,18 @@ def generate_optical_flow_video_gif(output_folder, video_path):
         ret, frame = cap.read()
         if not ret:
             break 
-        
-        if count == 1000:
-            break
+
         count+=1
         if prev_frame is not None:
             flow = compute_optical_flow(prev_frame, frame, model)
             flow_color = flow_to_color(flow[..., 0], flow[..., 1])
-            frames_flow_color.append(flow_color)
+            frame_resized = cv2.resize(flow_color, (480, 270), interpolation=cv2.INTER_AREA)
+
+            frames_flow_color.append(frame_resized)
     
         prev_frame = frame
 
     cap.release()
-
     frames2gif(frames_flow_color, Path(f'{output_folder}/optical_flow_video.gif'))
 
 
@@ -125,7 +156,7 @@ def detect_yoloft(model, frame, conf_th=0.5):
             cls_id = int(box.cls[0])  #id
             conf = float(box.conf[0])  #score
             x1, y1, x2, y2 = map(float, box.xyxy[0])  #bbox
-            
+
             if (cls_id == 0 and conf >= conf_th):
                 boxes.append((x1, y1, x2, y2, cls_id, conf))
 
@@ -179,7 +210,7 @@ def save_json(file: dict, name: str):
 def frames2gif(frames_list, output_gif, fps=30):
    with imageio.get_writer(output_gif, mode='I', duration=1000 / fps) as writer:
         for frame in frames_list:
-            frame_resized = cv2.resize(frame, (320, 180), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(frame, (480, 270), interpolation=cv2.INTER_AREA)
             frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             writer.append_data(frame_rgb)
 
@@ -200,15 +231,20 @@ def predict_bbox_with_flow(bbox, flow):
     flow_x = roi_flow[..., 0]
     flow_y = roi_flow[..., 1]
 
+    if flow_x.size == 0 or flow_y.size == 0:
+        return bbox
+
     dx = np.median(flow_x)
     dy = np.median(flow_y)
 
-    x1_new = x1 + dx
-    y1_new = y1 + dy
-    x2_new = x2 + dx
-    y2_new = y2 + dy
+    #check image limits
+    x1_new, y1_new = np.clip([x1 + dx, y1 + dy], [0, 0], [w - 1, h - 1])
+    x2_new, y2_new = np.clip([x2 + dx, y2 + dy], [x1_new + 1, y1_new + 1], [w, h])
 
     return [x1_new, y1_new, x2_new, y2_new]
+
+
+
 
 def iou(bboxA, bboxB):
     xA = max(bboxA[0], bboxB[0])
@@ -243,6 +279,8 @@ class KalmanFilterWithOpticalFlow:
         self.tracker_dict = {}
         self.n_frames = 1
         self.model = optical_flow_model('maskflownet')
+        self.image_width = 0
+        self.image_height = 0
     
     def next_frame(self):
         self.n_frames += 1
@@ -323,10 +361,16 @@ class KalmanFilterWithOpticalFlow:
 
         x_min, y_min, x_max, y_max, confs, classes = {}, {}, {}, {}, {}, {}
         for bbox, track_id, conf, class_id in zip(kalman_predicted_bbox, track_predicted_ids, conf_scores, class_ids):
-            x_min[str(int(track_id))] = bbox[0]
-            y_min[str(int(track_id))] = bbox[1]
-            x_max[str(int(track_id))] = bbox[2]
-            y_max[str(int(track_id))] = bbox[3]
+            
+            x_min_val = max(0, min(self.image_width - 1, bbox[0]))
+            y_min_val = max(0, min(self.image_height - 1, bbox[1]))
+            x_max_val = max(x_min_val + 1, min(self.image_width, bbox[2]))
+            y_max_val = max(y_min_val + 1, min(self.image_height, bbox[3]))
+
+            x_min[str(int(track_id))] = x_min_val
+            y_min[str(int(track_id))] = y_min_val
+            x_max[str(int(track_id))] = x_max_val
+            y_max[str(int(track_id))] = y_max_val
             confs[str(int(track_id))] = conf
             classes[str(int(track_id))] = class_id
 
@@ -357,17 +401,20 @@ class KalmanFilterWithOpticalFlow:
             frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), track.color, 4)
 
             # Draw text box
-            frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[0] + 40), int(bbox[1] + 20)), track.color, -1)
-            frame = cv2.putText(frame, str(track.id), (int(bbox[0]), int(bbox[1] + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            frame = cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[0] + 50), int(bbox[1] + 30)), track.color, -1)
+            frame = cv2.putText(frame, str(track.id), (int(bbox[0]+5), int(bbox[1] + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), thickness=2)
 
             for detection in track.history:
                 x_center = int((detection[0][0] + detection[0][2]) / 2)
                 y_center = int((detection[0][1] + detection[0][3]) / 2)
                 frame = cv2.circle(frame, (x_center, y_center), 5, track.color, -1)
-                
+
+        frame = cv2.rectangle(frame, (10, 10), (80, 40), (0, 0, 0), -1)
+        frame = cv2.putText(frame, f"{self.n_frames}", (15, 30), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.0, color=(255, 255, 255), thickness=2) 
+
         return frame
     
-    def execute(self, video_path, output_path, track_eval_path):
+    def execute(self, video_path, output_path, track_eval_path, c=None):
 
         predictions_file = f'{output_path}/predictions_yolov8n.json'
 
@@ -413,6 +460,9 @@ class KalmanFilterWithOpticalFlow:
 
         cap = cv2.VideoCapture(video_path)
 
+        self.image_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.image_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
         frame_id = 1
         frames_tracking = []
 
@@ -445,14 +495,18 @@ class KalmanFilterWithOpticalFlow:
             self.update(frame_boxes, flow)
 
             draw = self.draw_tracking(frame)
-            frames_tracking.append(draw)
+            frame_resized = cv2.resize(draw, (480, 270), interpolation=cv2.INTER_AREA)
+            frames_tracking.append(frame_resized)
 
             prev_frame = frame.copy()
             frame_id += 1
 
         cap.release()
 
-        frames2gif(frames_tracking, Path(f'{output_path}/tracking_{self.max_age}_{self.min_hits}_{self.iou_threshol}_{self.optical_flow}.gif'))
+        if c is not None:
+            frames2gif(frames_tracking, Path(f'{output_path}/tracking_{self.max_age}_{self.min_hits}_{self.iou_threshold}_{self.optical_flow}_{c}.gif'))
+        else:
+            frames2gif(frames_tracking, Path(f'{output_path}/tracking_{self.max_age}_{self.min_hits}_{self.iou_threshold}_{self.optical_flow}.gif'))
 
         save_json(self.tracker_dict, f'{output_path}/kalman_tracker_dict.json')
 

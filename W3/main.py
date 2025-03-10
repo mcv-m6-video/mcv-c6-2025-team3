@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import shutil
 import os
 import numpy as np
 import cv2
@@ -63,26 +64,81 @@ if __name__=="__main__":
         output_folder = Path('/home/danielpardo/c6/W3/output_task_2')
         output_folder.mkdir(exist_ok=True)
 
-        output_file = f"{output_folder}/results_tracking.txt"
+        output_file = f"{output_folder}/results_tracking_OF.txt"
         
         with open(output_file, "w") as f:
-            for option in [False]:
-                for max_age in [5, 9, 15]:
+            for option in [True]:
+                for max_age in [9]:
                     for min_hits in [2, 3]:
-                        for iou_threshold in [0.2, 0.3, 0.5]:
+                        for iou_threshold in [0.1, 0.2]:
                             kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=option)
                             kalman_filter.execute(video_path, output_folder, track_eval_path)
                             hota, idf1 = evaluate_tracking(track_eval_path)
                             f.write(f"HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
                             f.write("-" * 90 + "\n")
+                            print(f"HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
 
 
     elif args.task == 3:
         print("Task 2.1: Evaluate best tracking algorithm in SEQ01")
 
+        output_folder = Path('/home/danielpardo/c6/W3/output_task_3')
+        output_folder.mkdir(exist_ok=True)
+
+        output_file = f"{output_folder}/results_tracking.txt"
+
+        track_eval_path = f'/home/danielpardo/c6/TrackEval'
+
+        with open(output_file, "w") as f:
+            for c in range(1, 2):
+                video_path = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S01/c00{c}/vdo.avi'
+
+                gt = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S01/c00{c}/gt/gt.txt'
+                dst = f'{track_eval_path}/data/gt/mot_challenge/custom-train/s03/gt/gt.txt'
+                shutil.copy(gt, dst)
+
+                max_age =9
+                min_hits = 3
+                iou_threshold = 0.2
+                optical_flow = False
+
+                kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=optical_flow)
+                kalman_filter.execute(video_path, output_folder, track_eval_path, c)
+                hota, idf1 = evaluate_tracking(track_eval_path)
+                f.write(f"c00{c} HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
+                f.write("-" * 90 + "\n")
+                print(f"c00{c} HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
+        
     elif args.task == 4:
         print("Task 2.2: Evaluate best tracking algorithm in SEQ03")
-        
+
+        output_folder = Path('/home/danielpardo/c6/W3/output_task_4')
+        output_folder.mkdir(exist_ok=True)
+
+        output_file = f"{output_folder}/results_tracking.txt"
+
+        track_eval_path = f'/home/danielpardo/c6/TrackEval'
+
+        with open(output_file, "w") as f:
+            for c in range(10, 16):
+                video_path = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S03/c0{c}/vdo.avi'
+
+                gt = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S01/c0{c}/gt/gt.txt'
+                dst = f'{track_eval_path}/data/gt/mot_challenge/custom-train/s03/gt/gt.txt'
+                shutil.copy(gt, dst)
+
+                max_age =9
+                min_hits = 3
+                iou_threshold = 0.2
+                optical_flow = False
+
+                kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=optical_flow)
+                kalman_filter.execute(video_path, output_folder, track_eval_path, c)
+                hota, idf1 = evaluate_tracking(track_eval_path)
+                f.write(f"c0{c} HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
+                f.write("-" * 90 + "\n")
+                print(f"c0{c} HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
+
     elif args.task == 99:
         output_folder = Path('/home/danielpardo/c6/W3/output_task_1')
         output_folder.mkdir(exist_ok=True)

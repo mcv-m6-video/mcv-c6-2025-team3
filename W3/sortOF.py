@@ -209,18 +209,20 @@ def predict_bbox_with_flow(bbox, flow):
 
     roi_flow = flow[y1:y2, x1:x2]
     if roi_flow.size == 0:
-        return bbox
+      return bbox
 
     flow_x = roi_flow[..., 0]
     flow_y = roi_flow[..., 1]
 
+    if flow_x.size == 0 or flow_y.size == 0:
+      return bbox
     dx = np.median(flow_x)
     dy = np.median(flow_y)
 
-    x1_new = x1 + dx
-    y1_new = y1 + dy
-    x2_new = x2 + dx
-    y2_new = y2 + dy
+    #check image limits
+    x1_new, y1_new = np.clip([x1 + dx, y1 + dy], [0, 0], [w - 1, h - 1])
+    x2_new, y2_new = np.clip([x2 + dx, y2 + dy], [x1_new + 1, y1_new + 1], [w, h])
+
 
     return [x1_new, y1_new, x2_new, y2_new]
 
