@@ -1,51 +1,19 @@
-import sys
-from PIL import Image
 import os
-import time
 import numpy as np
-from pyflow import coarse2fine_flow
 import cv2
-import numpy as np
 from ultralytics import YOLO
 import torch
-import cv2
-import matplotlib.pyplot as plt
 import json
-import os
 from pathlib import Path
-import random
-import cv2
-import numpy as np
 from sortOF import Sort, convert_x_to_bbox
-import os
-from ultralytics import YOLO
-import cv2
 import xml.etree.ElementTree as ET
-import torch
-from torchvision.io.image import read_image
-from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights
-from torchvision.utils import draw_bounding_boxes
-from torchvision.transforms.functional import to_pil_image
-from torchmetrics.detection import MeanAveragePrecision
-from torchvision.io.image import read_image
-from torchvision.models.detection import (fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights)
-from torchvision.utils import draw_bounding_boxes
-from torchvision.transforms.functional import to_pil_image
-from torchmetrics.detection import MeanAveragePrecision
-import torch
-from PIL import Image
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from pathlib import Path
-import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import imageio
 import subprocess
 import ptlflow
 from ptlflow.utils.io_adapter import IOAdapter
-from ptlflow.utils import flow_utils
 
 def annonations2mot(gt_path, output_path):
-    gt_detections = {}
     tree = ET.parse(gt_path)
     root = tree.getroot()
 
@@ -135,7 +103,7 @@ def generate_optical_flow_video_gif(output_folder, video_path):
         if prev_frame is not None:
             flow = compute_optical_flow(prev_frame, frame, model)
             flow_color = flow_to_color(flow[..., 0], flow[..., 1])
-            frame_resized = cv2.resize(flow_color, (480, 270), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(flow_color, (320, 180), interpolation=cv2.INTER_AREA)
 
             frames_flow_color.append(frame_resized)
     
@@ -210,7 +178,7 @@ def save_json(file: dict, name: str):
 def frames2gif(frames_list, output_gif, fps=30):
    with imageio.get_writer(output_gif, mode='I', duration=1000 / fps) as writer:
         for frame in frames_list:
-            frame_resized = cv2.resize(frame, (480, 270), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(frame, (320, 180), interpolation=cv2.INTER_AREA)
             frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             writer.append_data(frame_rgb)
 
@@ -495,7 +463,7 @@ class KalmanFilterWithOpticalFlow:
             self.update(frame_boxes, flow)
 
             draw = self.draw_tracking(frame)
-            frame_resized = cv2.resize(draw, (480, 270), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(draw, (320, 180), interpolation=cv2.INTER_AREA)
             frames_tracking.append(frame_resized)
 
             prev_frame = frame.copy()

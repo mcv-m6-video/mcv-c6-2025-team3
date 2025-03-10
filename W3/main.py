@@ -4,8 +4,8 @@ import shutil
 import os
 import numpy as np
 import cv2
-from task_1_1 import optical_flow_off_the_shelf, generate_optical_flow_legend,compute_msen_pepn, read_flow_gt, flow_to_color
-from task_1_2 import create_folder_structure, annonations2mot, evaluate_tracking, generate_optical_flow_video_gif, KalmanFilterWithOpticalFlow
+from task_1_1 import optical_flow_off_the_shelf, compute_msen_pepn, read_flow_gt, flow_to_color
+from task_1_2 import  evaluate_tracking,  KalmanFilterWithOpticalFlow
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
 video_path = f'/home/danielpardo/c6/AICity_data/train/S03/c010/vdo.avi'
