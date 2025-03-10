@@ -8,6 +8,7 @@ import ptlflow
 from ptlflow.utils.io_adapter import IOAdapter
 
 
+
 def compute_msen_pepn(flow, gt, valid_gt, tau=3):
     # Get x and y values
     x_gt = gt[:,:,0]
@@ -54,13 +55,13 @@ def flow_to_color(flow_x, flow_y):
 
 def generate_optical_flow_legend(output_folder):    
     size = 300  
-    flow_x, flow_y = np.meshgrid(np.linspace(-1, 1, size), np.linspace(1, -1, size))  # Coordenadas normalizadas
+    flow_x, flow_y = np.meshgrid(np.linspace(-1, 1, size), np.linspace(-1, 1, size)) 
 
     magnitude, angle = cv2.cartToPolar(flow_x, flow_y)
     hsv = np.zeros((size, size, 3), dtype=np.uint8)
-    hsv[..., 0] = (angle * 180 / np.pi) / 2  # Hue: Dirección del movimiento
-    hsv[..., 1] = 255  # Saturación máxima
-    hsv[..., 2] = 255  # Brillo máximo (sin escala de magnitud)
+    hsv[..., 0] = (angle * 180 / np.pi) / 2  
+    hsv[..., 1] = 255 
+    hsv[..., 2] = 255  
 
     legend_image = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
 
