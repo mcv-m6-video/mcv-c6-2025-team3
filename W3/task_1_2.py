@@ -279,7 +279,7 @@ class KalmanFilterWithOpticalFlow:
                     match_idx = None
                     for i, bbox in enumerate(bbox_detection):
                         iou_val = iou(pred_track[:4], bbox[:4])
-                        if iou_val > iou_threshold:
+                        if iou_val > self.iou_threshold:
                             match_idx = i
                             break
                     #if we dont have match it is unsused bbox
