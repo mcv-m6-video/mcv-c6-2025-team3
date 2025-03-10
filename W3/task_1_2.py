@@ -300,7 +300,7 @@ class KalmanFilterWithOpticalFlow:
                     flow_bbox = predict_bbox_with_flow(prev_bbox, flow)
 
                     #now we find a match between this estimated bbox and the best unused with a th
-                    match_id, best_iou = find_best_match(flow_bbox, unused_detections, threshold=iou_threshold)
+                    match_id, best_iou = find_best_match(flow_bbox, unused_detections, threshold=self.iou_threshold)
                     if match_id is not None:
                         matches.append((track_obj, best_match, best_iou))
 
