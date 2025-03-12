@@ -227,7 +227,7 @@ def predict_bbox_with_flow(bbox, flow):
     return [x1_new, y1_new, x2_new, y2_new]
 
 class Sort(object):
-  def __init__(self, max_age=1, min_hits=3, iou_threshold=0.3):
+  def __init__(self, max_age=1, min_hits=3, iou_threshold=0.3, version = None):
     """
     Sets key parameters for SORT
     """
@@ -236,6 +236,7 @@ class Sort(object):
     self.iou_threshold = iou_threshold
     self.trackers = []
     self.frame_count = 0
+    self.version = version
 
   def update(self, dets=np.empty((0, 5)), flow=None):
     """
@@ -269,6 +270,14 @@ class Sort(object):
       #we use de previous bbox and optical flow to compute estimated bbox
       if flow is not None:
         flow_bbox = predict_bbox_with_flow(prev_bbox, flow)
+        if self.version == 'v3':
+          iou_kalman_of = iou(pos, flow_bbox)
+          if iou_kalman_of < 0.7:
+            for new_det in bbox_detection:
+              if iou(flow_bbox, new_det[:4]) > self.iou_threshold:
+                trk.update(new_det[:4])  # reasign old id
+                break
+
         trk[:] = [flow_bbox[0], flow_bbox[1], flow_bbox[2], flow_bbox[3], 0]
       else:
         #oterwhise we use kalman as usually

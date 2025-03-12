@@ -4,8 +4,9 @@ import shutil
 import os
 import numpy as np
 import cv2
-from task_1_1 import optical_flow_off_the_shelf, compute_msen_pepn, read_flow_gt, flow_to_color
-from task_1_2 import  evaluate_tracking,  KalmanFilterWithOpticalFlow
+from task_1_1 import optical_flow_off_the_shelf, compute_msen_pepn, read_flow_gt, flow_to_color, generate_optical_flow_legend
+from task_1_2 import  evaluate_tracking,  KalmanFilterWithOpticalFlow, annonations2mot, trim_gif
+
 
 # CHANGE PATHS ADAPTING TO YOUR ABSOLUTE PATH:
 video_path = f'/home/danielpardo/c6/AICity_data/train/S03/c010/vdo.avi'
@@ -24,7 +25,7 @@ if __name__=="__main__":
     ))
     args = parser.parse_args()
 
-    args.task = 2
+    args.task = 99
 
     # python main.py --task 1
     if args.task == 1:
@@ -61,17 +62,19 @@ if __name__=="__main__":
 
     elif args.task == 2:
         print("Task 1.2: Improve tracking with optical flow")
-        output_folder = Path('/home/danielpardo/c6/W3/output_task_2')
+        output_folder = Path('/home/danielpardo/c6/W3/output_task_2v3')
         output_folder.mkdir(exist_ok=True)
 
-        output_file = f"{output_folder}/results_tracking_OF.txt"
+        output_file = f"{output_folder}/results_tracking.txt"
         
+        annonations2mot(annotations_path, f'{track_eval_path}/data/gt/mot_challenge/custom-train/s03/gt/gt.txt')
+
         with open(output_file, "w") as f:
             for option in [True]:
-                for max_age in [9]:
-                    for min_hits in [2, 3]:
-                        for iou_threshold in [0.1, 0.2]:
-                            kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=option)
+                for max_age in [9]: #[5, 9, 15]:
+                    for min_hits in [2]:
+                        for iou_threshold in [0.1, 0.2]: # [0.2, 0.3, 0.5]:
+                            kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=option, version = 'v3')
                             kalman_filter.execute(video_path, output_folder, track_eval_path)
                             hota, idf1 = evaluate_tracking(track_eval_path)
                             f.write(f"HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
@@ -90,7 +93,7 @@ if __name__=="__main__":
         track_eval_path = f'/home/danielpardo/c6/TrackEval'
 
         with open(output_file, "w") as f:
-            for c in range(1, 2):
+            for c in range(1, 6):
                 video_path = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S01/c00{c}/vdo.avi'
 
                 gt = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S01/c00{c}/gt/gt.txt'
@@ -98,8 +101,8 @@ if __name__=="__main__":
                 shutil.copy(gt, dst)
 
                 max_age =9
-                min_hits = 3
-                iou_threshold = 0.2
+                min_hits = 2
+                iou_threshold = 0.1
                 optical_flow = False
 
                 kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=optical_flow)
@@ -108,7 +111,7 @@ if __name__=="__main__":
                 f.write(f"c00{c} HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
                 f.write("-" * 90 + "\n")
                 print(f"c00{c} HOTA: {hota:.4f} | IDF1: {idf1:.4f} | Max age: {max_age} | Min hits: {min_hits} | IoU: {iou_threshold:.2f}\n")
-        
+    
     elif args.task == 4:
         print("Task 2.2: Evaluate best tracking algorithm in SEQ03")
 
@@ -120,16 +123,16 @@ if __name__=="__main__":
         track_eval_path = f'/home/danielpardo/c6/TrackEval'
 
         with open(output_file, "w") as f:
-            for c in range(10, 16):
+            for c in range(11, 16):
                 video_path = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S03/c0{c}/vdo.avi'
 
-                gt = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S01/c0{c}/gt/gt.txt'
+                gt = f'/home/danielpardo/c6/aic19-track1-mtmc-train/train/S03/c0{c}/gt/gt.txt'
                 dst = f'{track_eval_path}/data/gt/mot_challenge/custom-train/s03/gt/gt.txt'
                 shutil.copy(gt, dst)
 
                 max_age =9
-                min_hits = 3
-                iou_threshold = 0.2
+                min_hits = 2
+                iou_threshold = 0.1
                 optical_flow = False
 
                 kalman_filter = KalmanFilterWithOpticalFlow(max_age=max_age, min_hits=min_hits, iou_threshold=iou_threshold, optical_flow=optical_flow)

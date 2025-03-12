@@ -103,7 +103,7 @@ def generate_optical_flow_video_gif(output_folder, video_path):
         if prev_frame is not None:
             flow = compute_optical_flow(prev_frame, frame, model)
             flow_color = flow_to_color(flow[..., 0], flow[..., 1])
-            frame_resized = cv2.resize(flow_color, (320, 180), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(flow_color, (480, 270), interpolation=cv2.INTER_AREA)
 
             frames_flow_color.append(frame_resized)
     
@@ -124,6 +124,11 @@ def detect_yoloft(model, frame, conf_th=0.5):
             cls_id = int(box.cls[0])  #id
             conf = float(box.conf[0])  #score
             x1, y1, x2, y2 = map(float, box.xyxy[0])  #bbox
+            x1 *= scale_factor
+            y1 *= scale_factor
+            x2 *= scale_factor
+            y2 *= scale_factor
+
 
             if (cls_id == 0 and conf >= conf_th):
                 boxes.append((x1, y1, x2, y2, cls_id, conf))
@@ -178,7 +183,7 @@ def save_json(file: dict, name: str):
 def frames2gif(frames_list, output_gif, fps=30):
    with imageio.get_writer(output_gif, mode='I', duration=1000 / fps) as writer:
         for frame in frames_list:
-            frame_resized = cv2.resize(frame, (320, 180), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(frame, (480, 270), interpolation=cv2.INTER_AREA)
             frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             writer.append_data(frame_rgb)
 
@@ -238,7 +243,7 @@ def find_best_match(flow_bbox, detections, threshold=0.5):
     return best_idx, best_iou
 
 class KalmanFilterWithOpticalFlow:
-    def __init__(self, max_age=30, min_hits=3, iou_threshold=0.3, optical_flow=False):
+    def __init__(self, max_age=30, min_hits=3, iou_threshold=0.3, optical_flow=False, version = None):
         self.max_age = int(max_age)
         self.min_hits = int(min_hits)
         self.iou_threshold = float(iou_threshold)
@@ -249,72 +254,84 @@ class KalmanFilterWithOpticalFlow:
         self.model = optical_flow_model('maskflownet')
         self.image_width = 0
         self.image_height = 0
-    
+        self.version = version
+        self.prev_frame = None
+        self.flow = None
+
     def next_frame(self):
         self.n_frames += 1
 
-    def update(self, bbox_detection, flow = None):
+    def update(self, bbox_detection, frame):
         #update with Sort
         bboxes = bbox_detection[:, :4]
         conf_scores = bbox_detection[:, 4]
         class_ids = bbox_detection[:, 5]
 
-        predicted_tracks = self.kalman_tracker.update(bboxes, flow)
+        ######### flow here?
+        if self.version == 'v2' or self.version == 'v3':
+            if self.optical_flow and self.prev_frame is not None:
+                self.flow = compute_optical_flow(self.prev_frame, frame, self.model)
 
+        predicted_tracks = self.kalman_tracker.update(bboxes, self.flow)
 
         if len(predicted_tracks) == 0:
             print(f"Failed to track objects in frame {self.n_frames}")
         else: #check for unmached tracks
-            if self.optical_flow and flow is not None:
-                unmatched_tracks = []
-                for track in self.kalman_tracker.trackers:
-                    if track.time_since_update == 1: #1 for this current frame
-                        unmatched_tracks.append(track)
-                
-                #search bboxes from YOLO unused in Sort
-                used_indices = []
-                #for this, first we searh tracks that have iuo > iou_threshold with yolo
-                #detected object to assume that it is a match
-                for pred_track in predicted_tracks:
-                    match_idx = None
+            if self.optical_flow:
+                if self.version == 'v1':
+                    if self.prev_frame is not None:
+                        self.flow = compute_optical_flow(self.prev_frame, frame, self.model)
+
+                if self.flow is not None:
+                    unmatched_tracks = []
+                    for track in self.kalman_tracker.trackers:
+                        if track.time_since_update == 1: #1 for this current frame
+                            unmatched_tracks.append(track)
+                    
+                    #search bboxes from YOLO unused in Sort
+                    used_indices = []
+                    #for this, first we searh tracks that have iuo > iou_threshold with yolo
+                    #detected object to assume that it is a match
+                    for pred_track in predicted_tracks:
+                        match_idx = None
+                        for i, bbox in enumerate(bbox_detection):
+                            iou_val = iou(pred_track[:4], bbox[:4])
+                            if iou_val > self.iou_threshold:
+                                match_idx = i
+                                break
+                        #if we dont have match it is unsused bbox
+                        if match_idx is not None:
+                            used_indices.append(match_idx)
+                    #add all uunused bboxes
+                    unused_detections = []
                     for i, bbox in enumerate(bbox_detection):
-                        iou_val = iou(pred_track[:4], bbox[:4])
-                        if iou_val > self.iou_threshold:
-                            match_idx = i
-                            break
-                    #if we dont have match it is unsused bbox
-                    if match_idx is not None:
-                        used_indices.append(match_idx)
-                #add all uunused bboxes
-                unused_detections = []
-                for i, bbox in enumerate(bbox_detection):
-                    if i not in used_indices:
-                        unused_detections.append(bbox)
+                        if i not in used_indices:
+                            unused_detections.append(bbox)
 
-                matches = [] 
-                #now we try to assign unmatched track to unused bbox using optical flow
-                for track_obj in unmatched_tracks:
-                    #previous estimated bbox, since in current frame is missing
-                    prev_bbox = convert_x_to_bbox(track_obj.kf.x).squeeze()
-                    #estimate hypothetical bbox in current frame using flow
-                    flow_bbox = predict_bbox_with_flow(prev_bbox, flow)
+                    matches = [] 
+                    #now we try to assign unmatched track to unused bbox using optical flow
+                    for track_obj in unmatched_tracks:
+                        #previous estimated bbox, since in current frame is missing
+                        prev_bbox = convert_x_to_bbox(track_obj.kf.x).squeeze()
+                        #estimate hypothetical bbox in current frame using flow
+                        flow_bbox = predict_bbox_with_flow(prev_bbox, self.flow)
 
-                    #now we find a match between this estimated bbox and the best unused with a th
-                    match_id, best_iou = find_best_match(flow_bbox, unused_detections, threshold=self.iou_threshold)
-                    if match_id is not None:
-                        matches.append((track_obj, match_id, best_iou))
+                        #now we find a match between this estimated bbox and the best unused with a th
+                        match_id, best_iou = find_best_match(flow_bbox, unused_detections, threshold=self.iou_threshold)
+                        if match_id is not None:
+                            matches.append((track_obj, match_id, best_iou))
 
-                matches.sort(key=lambda x: x[2], reverse=True)
+                    matches.sort(key=lambda x: x[2], reverse=True)
 
-                used_detections = set()
-                
-                #assing past id to this track, manual update
+                    used_detections = set()
+                    
+                    #assing past id to this track, manual update
 
-                for track_obj, bbox_idx, _ in matches:
-                    if bbox_idx not in used_detections:
-                        bbox_found = unused_detections[bbox_idx]
-                        track_obj.update(np.array(bbox_found[:4]))
-                        used_detections.add(bbox_idx)
+                    for track_obj, bbox_idx, _ in matches:
+                        if bbox_idx not in used_detections:
+                            bbox_found = unused_detections[bbox_idx]
+                            track_obj.update(np.array(bbox_found[:4]))
+                            used_detections.add(bbox_idx)
 
         self.update_tracker_dict(predicted_tracks, conf_scores, class_ids)
     
@@ -387,43 +404,38 @@ class KalmanFilterWithOpticalFlow:
         predictions_file = f'{output_path}/predictions_yolov8n.json'
 
         # Check if the predictions file exists
-        if os.path.exists(predictions_file):
-            print("Reading predictions from 'predictions_yolov8n.json'...")
-            with open(predictions_file, 'r') as f:
-                predictions = json.load(f)
-            n_frames = len(predictions)
-        else:
-            print("Detecting objects using yolov8n...")
-            model_path = "/home/danielpardo/c6/W3/yolov8n_ft.pt"
-            model = YOLO(model_path)
-            conf_th = 0.5
 
-            frame_number = 0 
-            predictions = {}
-            frames_detection = []
+        print("Detecting objects using yolov8n...")
+        model_path = "/home/danielpardo/c6/W3/yolov8n_ft.pt"
+        model = YOLO(model_path)
+        conf_th = 0.5
 
-            cap = cv2.VideoCapture(video_path)
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
+        frame_number = 0 
+        predictions = {}
+        frames_detection = []
 
-                frame_number += 1
-            
-                predictions_frame, frame = detect_yoloft(model, frame, conf_th)
+        cap = cv2.VideoCapture(video_path)
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-                predictions[frame_number] = predictions_frame
-                frames_detection.append(frame)
+            frame_number += 1
 
-            cap.release()
+            predictions_frame, frame = detect_yoloft(model, frame, conf_th)
 
-            # Save predictions to a JSON file
-            with open(predictions_file, 'w') as f:
-                json.dump(predictions, f, indent=4)
+            predictions[frame_number] = predictions_frame
+            frames_detection.append(frame)
 
-            predictions = json.loads(json.dumps(predictions))
-      
-            n_frames = len(predictions)
+        cap.release()
+
+        # Save predictions to a JSON file
+        with open(predictions_file, 'w') as f:
+            json.dump(predictions, f, indent=4)
+
+        predictions = json.loads(json.dumps(predictions))
+    
+        n_frames = len(predictions)
 
 
         cap = cv2.VideoCapture(video_path)
@@ -434,16 +446,10 @@ class KalmanFilterWithOpticalFlow:
         frame_id = 1
         frames_tracking = []
 
-        prev_frame = None
-        flow = None
-
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret or frame_id > n_frames:
                 break 
-
-            if self.optical_flow and prev_frame is not None:
-                flow = compute_optical_flow(prev_frame, frame, self.model)
 
             detections_current_frame = predictions.get(str(frame_id), [])
             # print('Detections', detections_current_frame)
@@ -460,13 +466,13 @@ class KalmanFilterWithOpticalFlow:
                 frame_boxes = np.empty((0, 6), dtype=np.float32) 
 
             # Update the KalmanFilter with the detections
-            self.update(frame_boxes, flow)
+            self.update(frame_boxes, frame)
 
             draw = self.draw_tracking(frame)
-            frame_resized = cv2.resize(draw, (320, 180), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(draw, (480, 270), interpolation=cv2.INTER_AREA)
             frames_tracking.append(frame_resized)
 
-            prev_frame = frame.copy()
+            self.prev_frame = frame.copy()
             frame_id += 1
 
         cap.release()
@@ -507,3 +513,31 @@ class KalmanFilterWithOpticalFlow:
                     f.write(f"{frame}, {track_id}, {x1:.2f}, {y1:.2f}, {width:.2f}, {height:.2f}, {conf}, {class_id}, {visibility}\n")
 
         print("Tracking with Kalman filter finished!")
+
+
+
+from PIL import Image, ImageSequence
+
+
+def trim_gif(input_gif, output_gif, start_time=0, end_time=10):
+    gif = Image.open(input_gif)
+
+    frame_rate = 30
+    
+    start_frame = int((start_time * 1000) / frame_rate) 
+    end_frame = int((end_time * 1000) / frame_rate) 
+    
+    frames = []
+    
+    for i, frame in enumerate(ImageSequence.Iterator(gif)):
+        if i < start_frame:
+            continue  # Skip frames before the start time
+        if i >= end_frame:
+            break  # Stop once we've reached the end time
+        frames.append(frame.copy())  # Add frames within the time range
+
+    if frames:
+        frames[0].save(output_gif, save_all=True, append_images=frames[1:], duration=frame_rate, loop=0)
+        print(f"Trimmed GIF saved to {output_gif}")
+    else:
+        print(f"No frames found in the specified time range.")
