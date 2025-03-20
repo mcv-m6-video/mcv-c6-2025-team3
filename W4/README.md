@@ -9,3 +9,5 @@ There are 2 tasks that can be run:
 `--task 1`: Task 1: Multi-camera tracking
 
 `--task 99`: Compute object tracking in all cameras of the sequence
+
+[Slides](https://docs.google.com/presentation/d/1BHLbmVSzz5i4e4RFCpyQqrt0yCGOHahIYUosW-2eqas/edit?usp=sharing)
