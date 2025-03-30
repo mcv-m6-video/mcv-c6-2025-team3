@@ -96,14 +96,16 @@ def main(args):
         train_data, shuffle=False, batch_size=args.batch_size,
         pin_memory=True, num_workers=args.num_workers,
         prefetch_factor=(4 if args.num_workers > 0 else None),
-        worker_init_fn=worker_init_fn
+        worker_init_fn=worker_init_fn,
+        persistent_workers=True
     )
         
     val_loader = DataLoader(
         val_data, shuffle=False, batch_size=args.batch_size,
         pin_memory=True, num_workers=args.num_workers,
         prefetch_factor=(4 if args.num_workers > 0 else None),
-        worker_init_fn=worker_init_fn
+        worker_init_fn=worker_init_fn,
+        persistent_workers=True
     )
 
     # Model
@@ -117,43 +119,44 @@ def main(args):
         num_epochs, lr_scheduler = get_lr_scheduler(
             args, optimizer, num_steps_per_epoch)
         
-        losses = []
-        best_criterion = float('inf')
+        metrics = []
+        best_criterion = -float('inf')
         epoch = 0
 
         print('START TRAINING EPOCHS')
         start_time = time.time()
         for epoch in range(epoch, num_epochs):
 
-            train_loss = model.epoch(
+            train_loss, train_ap = model.epoch(
                 train_loader, optimizer, scaler,
                 lr_scheduler=lr_scheduler)
             
-            val_loss = model.epoch(val_loader)
+            val_loss,val_ap = model.epoch(val_loader)
 
             better = False
-            if val_loss < best_criterion:
-                best_criterion = val_loss
+            if val_ap > best_criterion:
+                best_criterion = val_ap
                 better = True
             
             #Printing info epoch
             epoch_time = time.time() - start_time
-            print('[Epoch {}] Train loss: {:0.5f} Val loss: {:0.5f} Time: {:0.2f}s'.format(
-                epoch, train_loss, val_loss, epoch_time))
+            print('[Epoch {}] Train loss: {:0.5f} Val loss: {:0.5f} Train ap: {:0.4f} Val ap: {:0.4f} Time: {:0.2f}s'.format(
+                epoch, train_loss, val_loss, train_ap, val_ap, epoch_time))
+
             if better:
                 print('New best mAP epoch!')
 
-            losses.append({
-                'epoch': epoch, 'train': train_loss, 'val': val_loss
+            metrics.append({
+                'epoch': epoch, 'train_loss': train_loss, 'val_loss': val_loss, 'train_ap': train_ap, 'val_ap': val_ap
             })
 
             if args.save_dir is not None:
                 os.makedirs(args.save_dir, exist_ok=True)
-                store_json(os.path.join(args.save_dir, 'loss.json'), losses, pretty=True)
+                store_json(os.path.join(args.save_dir, 'loss.json'), metrics, pretty=True)
 
                 if better:
                     torch.save( model.state_dict(), os.path.join(ckpt_dir, 'checkpoint_best.pt') )
-
+    
     print('START INFERENCE')
     model.load(torch.load(os.path.join(ckpt_dir, 'checkpoint_best.pt')))
 
