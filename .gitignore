@@ -1,3 +1,7 @@
 touch .gitignore
 venv_3_10/
 __pycache__/
+W5/SoccerNet/
+W5/frames/
+W5/labels/
+W5/results/
