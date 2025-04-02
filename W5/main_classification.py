@@ -21,6 +21,7 @@ from util.eval_classification import evaluate
 from dataset.datasets import get_datasets
 from model.model_classification import Model
 import time
+from model.modules import compute_pos_weights
 
 
 def get_args():
@@ -95,17 +96,17 @@ def main(args):
     train_loader = DataLoader(
         train_data, shuffle=False, batch_size=args.batch_size,
         pin_memory=True, num_workers=args.num_workers,
-        prefetch_factor=(4 if args.num_workers > 0 else None),
+        prefetch_factor=(2 if args.num_workers > 0 else None),
         worker_init_fn=worker_init_fn,
-        persistent_workers=True
+        persistent_workers=(True if args.num_workers > 0 else False)
     )
         
     val_loader = DataLoader(
         val_data, shuffle=False, batch_size=args.batch_size,
         pin_memory=True, num_workers=args.num_workers,
-        prefetch_factor=(4 if args.num_workers > 0 else None),
+        prefetch_factor=(2 if args.num_workers > 0 else None),
         worker_init_fn=worker_init_fn,
-        persistent_workers=True
+        persistent_workers=(True if args.num_workers > 0 else False)
     )
 
     # Model
@@ -123,15 +124,19 @@ def main(args):
         best_criterion = -float('inf')
         epoch = 0
 
+        pos_weight = compute_pos_weights(train_loader, num_classes=args.num_classes).to(args.device)
+
         print('START TRAINING EPOCHS')
         start_time = time.time()
         for epoch in range(epoch, num_epochs):
 
-            train_loss, train_ap = model.epoch(
+            train_loss = model.epoch(
                 train_loader, optimizer, scaler,
-                lr_scheduler=lr_scheduler)
+                lr_scheduler=lr_scheduler, pos_weight=pos_weight)
             
-            val_loss,val_ap = model.epoch(val_loader)
+            val_loss = model.epoch(val_loader)
+            val_ap_cls = evaluate(model, val_data)
+            val_ap = np.mean(val_ap_cls)
 
             better = False
             if val_ap > best_criterion:
@@ -140,14 +145,14 @@ def main(args):
             
             #Printing info epoch
             epoch_time = time.time() - start_time
-            print('[Epoch {}] Train loss: {:0.5f} Val loss: {:0.5f} Train ap: {:0.4f} Val ap: {:0.4f} Time: {:0.2f}s'.format(
-                epoch, train_loss, val_loss, train_ap, val_ap, epoch_time))
+            print('[Epoch {}] Train loss: {:0.5f} Val loss: {:0.5f} Val ap: {:0.4f} Time: {:0.2f}s'.format(
+                epoch, train_loss, val_loss, val_ap, epoch_time))
 
             if better:
                 print('New best mAP epoch!')
 
             metrics.append({
-                'epoch': epoch, 'train_loss': train_loss, 'val_loss': val_loss, 'train_ap': train_ap, 'val_ap': val_ap
+                'epoch': epoch, 'train_loss': train_loss, 'val_loss': val_loss, 'val_ap': val_ap
             })
 
             if args.save_dir is not None:
