@@ -83,3 +83,18 @@ def step(optimizer, scaler, loss, lr_scheduler=None):
     if lr_scheduler is not None:
         lr_scheduler.step()
     optimizer.zero_grad()
+
+def compute_pos_weights(loader, num_classes):
+    pos_counts = torch.zeros(num_classes)
+    total = 0
+
+    for batch in loader:
+        labels = batch['label']  # (B, C)
+        pos_counts += labels.sum(dim=0)
+        total += labels.shape[0]
+
+    neg_counts = total - pos_counts
+    pos_weight = neg_counts / (pos_counts + 1e-5) 
+
+    pos_weight = torch.log1p(pos_weight) #to prevent extreme values
+    return pos_weight

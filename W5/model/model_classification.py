@@ -58,6 +58,17 @@ class RGBClassifier(nn.Module):
             T.Normalize(mean = (0.485, 0.456, 0.406), std = (0.229, 0.224, 0.225)) #Imagenet mean and std
         ])
 
+        
+        self.attn_pool = nn.Sequential(
+            nn.LayerNorm(self._d),
+            nn.Linear(self._d, 128),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(128, 1),
+            nn.Softmax(dim=1)
+        )
+        
+        
     def forward(self, x):
         x = self.normalize(x) #Normalize to 0-1
         batch_size, clip_len, channels, height, width = x.shape #B, T, C, H, W
@@ -72,7 +83,13 @@ class RGBClassifier(nn.Module):
         ).reshape(batch_size, clip_len, self._d) #B, T, D
 
         #Max pooling
-        im_feat = torch.max(im_feat, dim=1)[0] #B, D
+        #im_feat = torch.max(im_feat, dim=1)[0] #B, D
+        #im_feat = torch.mean(im_feat, dim=1)
+
+        #im_feat = torch.cat([im_max, im_avg], dim=1)
+
+        weights = self.attn_pool(im_feat) # (B, T, 1)
+        im_feat = (weights * im_feat).sum(dim=1) #B, D
 
         #MLP
         im_feat = self._fc(im_feat) #B, num_classes
@@ -93,13 +110,20 @@ class RGBClassifier(nn.Module):
         return x
 
     def print_stats(self):
+
         print('Model params:',
             sum(p.numel() for p in self.parameters()))
 
-        macs_str, _ = get_model_complexity_info(self._features, (3, 398, 224),
+        def input_constructor(input_res):
+            batch = torch.randn(1, 1, *input_res)  # (1, 1, 3, 398, 224)
+            return {'x': batch}
+
+        macs, _ = get_model_complexity_info(self, (3, 398, 224), input_constructor=input_constructor,
         as_strings=True, print_per_layer_stat=False, verbose=False
         )
-        print('Model MACs:', macs_str)
+        
+        print('Model MACs:', macs)
+
 
 class Model(BaseRGBModel):
     def __init__(self, args=None):
@@ -114,7 +138,7 @@ class Model(BaseRGBModel):
         self._model.to(self.device)
         self._num_classes = args.num_classes
 
-    def epoch(self, loader, optimizer=None, scaler=None, lr_scheduler=None):
+    def epoch(self, loader, optimizer=None, scaler=None, lr_scheduler=None, pos_weight=None):
 
         disable_tqdm = not sys.stdout.isatty()
 
@@ -127,8 +151,7 @@ class Model(BaseRGBModel):
             self._model.train()
 
         epoch_loss = 0.
-        all_labels = []
-        all_preds = []
+
         with torch.no_grad() if optimizer is None else nullcontext():
             for batch_idx, batch in enumerate(tqdm(loader, disable=disable_tqdm)):
                 frame = batch['frame'].to(self.device).float()
@@ -138,7 +161,7 @@ class Model(BaseRGBModel):
                 with torch.cuda.amp.autocast():
                     pred = self._model(frame)
                     loss = F.binary_cross_entropy_with_logits(
-                            pred, label)
+                        pred, label, pos_weight=pos_weight)
 
                 if not inference:
                     step(optimizer, scaler, loss,
@@ -146,18 +169,7 @@ class Model(BaseRGBModel):
 
                 epoch_loss += loss.detach().item()
 
-                if inference:
-                    all_labels.append(label.detach().cpu())
-                    all_preds.append(torch.sigmoid(pred.detach().cpu()))  #logits to probabilities
-        ap = 0.0
-
-        if inference:
-            all_labels = torch.cat(all_labels).numpy()
-            all_preds = torch.cat(all_preds).numpy()
-
-            ap = average_precision_score(all_labels, all_preds, average='macro')  #Set to Macro so AP per class are averaged
-
-        return epoch_loss / len(loader), ap     # Avg loss / AP
+        return epoch_loss / len(loader) # Avg loss
 
     def predict(self, seq):
 
