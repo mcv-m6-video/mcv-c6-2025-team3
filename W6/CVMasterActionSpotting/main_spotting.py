@@ -70,7 +70,8 @@ def main(args):
     np.random.seed(args.seed)
     random.seed(args.seed)
 
-    config_path = 'config/' + args.model + '.json'
+    config_path = '/Users/andrea.sanchez/Desktop/mcv-c6-2025-team3/W6/CVMasterActionSpotting/config/' + args.model + '.json'
+    print('Loading config from: ', config_path)
     config = load_json(config_path)
     args = update_args(args, config)
 

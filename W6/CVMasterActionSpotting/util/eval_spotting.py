@@ -9,7 +9,8 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import average_precision_score
 import json
 import os
-from SoccerNet.Evaluation.ActionSpotting import average_mAP
+from SoccerNet.SoccerNet.Evaluation.ActionSpotting import average_mAP
+
 
 #Local imports
 from dataset.frame import FPS_SN
