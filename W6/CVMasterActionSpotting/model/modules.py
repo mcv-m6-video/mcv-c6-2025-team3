@@ -69,7 +69,7 @@ class FCLayers(nn.Module):
         elif len(x.shape) == 2:
             return self._fc_out(self.dropout(x))
 
-def step(optimizer, scaler, loss, lr_scheduler=None):
+def step(optimizer, scaler, loss, first_step, lr_scheduler=None):
     if scaler is None:
         loss.backward()
     else:
@@ -80,6 +80,52 @@ def step(optimizer, scaler, loss, lr_scheduler=None):
     else:
         scaler.step(optimizer)
         scaler.update()
-    if lr_scheduler is not None:
+
+    if lr_scheduler is not None and not first_step:
         lr_scheduler.step()
+
     optimizer.zero_grad()
+
+def compute_class_weights(dataset, num_classes):
+    class_counts = torch.zeros(num_classes, dtype=torch.long)
+    total_count = 0
+    
+    for item in dataset:
+        labels = item['label']  
+        labels = labels.view(-1)
+        class_counts += torch.bincount(labels, minlength=num_classes)
+        total_count += labels.numel()
+
+    print("Class counts:", class_counts)
+    print("Total frames:", total_count)
+
+    freq = class_counts.float() / total_count
+
+    print("Frequencies:", freq)
+
+    freq_nonzero = freq[freq>0]
+    if len(freq_nonzero) == 0:
+        print("¡Error, no hay clases con freq>0!")
+        return torch.ones(num_classes)
+
+    median_freq = freq_nonzero.median()
+    
+    print("Median frequency:", median_freq.item())
+
+    w = median_freq / freq
+    #w = torch.log1p(w)
+    w = torch.sqrt(w)
+    print("Class Weights1:", w)
+
+    w = w / w.mean()
+    print("Class Weights2:", w)
+
+    w = w.clamp(min=(max(w)*0.005), max=1.0)
+    print("Class Weights3:", w)
+
+    strong = torch.tensor([0.5] + [5.0] * (num_classes-1)).to(w.device)
+    w = w + strong
+    
+    print("Class Weights4:", w)
+
+    return w
