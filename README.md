@@ -39,4 +39,4 @@ Go to the README.md of each Week to know how to run each part of the project.
 
 ### Final Presentation
 
-Can be found here https://docs.google.com/presentation/d/1MPt6wMAjrllWGlHwkgYUd8L-U-KBDW_Hmqq-8qg6ciU/edit?usp=sharing
+Can be found [here](https://docs.google.com/presentation/d/1MPt6wMAjrllWGlHwkgYUd8L-U-KBDW_Hmqq-8qg6ciU/edit?usp=sharing).
